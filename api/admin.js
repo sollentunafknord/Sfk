@@ -866,8 +866,10 @@ module.exports = async (req, res) => {
       return a.shirt - b.shirt;
     });
 
+    const t4 = (overview?.Blurbs||[]).filter(b=>b.TypeID===4&&(isHome?!b.IsAwayTeamAction:b.IsAwayTeamAction));
     return res.status(200).json({
       gameId: parseInt(gameId),
+      _t4: t4.map(b=>({t:b.Title,d:b.Description,sec:b.GameClockSecond})),
 
 
 
