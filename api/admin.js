@@ -798,7 +798,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _debug: { homeTeamId: header?.HomeTeamID, awayTeamId: header?.AwayTeamID, homeRosterId: lineups?.HomeTeamGameTeamRoster?.TeamID, awayRosterId: lineups?.AwayTeamGameTeamRoster?.TeamID, tid, lineupKeys: lineups ? Object.keys(lineups) : [], homeLineupKeys: lineups?.HomeTeamLineUp ? Object.keys(lineups.HomeTeamLineUp) : [] },
+      _debug: { homeTeamId: header?.HomeTeamID, awayTeamId: header?.AwayTeamID, tid, homeRosterKeys: lineups?.HomeTeamGameTeamRoster ? Object.keys(lineups.HomeTeamGameTeamRoster) : [], homeRosterTeamId: lineups?.HomeTeamGameTeamRoster?.TeamID, homePlayerCount: lineups?.HomeTeamGameTeamRoster?.Players?.length, homeGamePlayers: lineups?.HomeTeamGameTeamRoster?.GamePlayers?.length },
       homeTeam: header.HomeTeamDisplayName,
       awayTeam: header.AwayTeamDisplayName,
       homeScore: header.HomeTeamScore,
