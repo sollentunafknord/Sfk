@@ -666,7 +666,10 @@ module.exports = async (req, res) => {
     }
 
     // Eğer overview boşsa TimelineBlurbs'ten çek — sadece A-lag takımları için
-    const ALAG_TEAM_IDS = new Set([68503, 201387]); // A-lag Herr, A-lag Dam
+    const ALAG_TEAM_IDS = new Set([68503, 201387]);
+    // Forma no -> playerId ters map
+    const shirtToPlayerId = {};
+    Object.keys(playerShirtNos).forEach(pid => { shirtToPlayerId[parseInt(playerShirtNos[pid])] = parseInt(pid); }); // A-lag Herr, A-lag Dam
     if (uniqueSubBlurbs.length === 0 && ALAG_TEAM_IDS.has(tid) && rosterData && rosterData.TimelineBlurbs) {
       rosterData.TimelineBlurbs.forEach(b => {
         const er = b.EREventInfo;
@@ -705,9 +708,7 @@ module.exports = async (req, res) => {
       if (b._fromTimeline) {
         // Timeline formatı
         minute = b._minute;
-        const pid = b._shirtNo ? Object.keys(playerShirtNos).find(k => parseInt(playerShirtNos[k]) === parseInt(b._shirtNo)) : null;
-        const pidByName = findPlayer(b._nameRaw);
-        const resolvedPid = pid ? parseInt(pid) : pidByName;
+        const resolvedPid = (b._shirtNo && shirtToPlayerId[b._shirtNo]) ? shirtToPlayerId[b._shirtNo] : findPlayer(b._nameRaw);
         if (b._isIn) inPid = resolvedPid;
         if (b._isOut) outPid = resolvedPid;
       } else {
