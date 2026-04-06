@@ -991,38 +991,30 @@ module.exports = async (req, res) => {
           });
         } catch(e) {}
       }
-      // Staff (lag ledare) - son maçlardan çek
+      // Staff (lag ledare) - initteamstaffadminvc endpoint'i ile çek
       try {
-        const recentMatches = await supabaseGet('/matches?select=game_id&order=game_date.desc&limit=5');
         const seenStaffIds = new Set();
-        if (Array.isArray(recentMatches)) {
-          for (const match of recentMatches) {
-            try {
-              const lineups = await minfotbollGet(`/api/magazinegameviewapi/initgamelineups?GameID=${match.game_id}`, mfToken);
-              for (const roster of [lineups?.HomeTeamGameTeamRoster, lineups?.AwayTeamGameTeamRoster]) {
-                if (!roster?.TeamStaff) continue;
-                // Sadece SFK takımlarına ait staff
-                const sfkTeamIds = teams.map(t => t.team_id);
-                if (!sfkTeamIds.includes(roster.TeamID)) continue;
-                const teamObj = teams.find(t => t.team_id === roster.TeamID);
-                roster.TeamStaff.forEach(s => {
-                  if (seenStaffIds.has(s.MemberID)) return;
-                  seenStaffIds.add(s.MemberID);
-                  results.push({
-                    teamId  : roster.TeamID,
-                    teamName: teamObj?.team_name || '',
-                    playerId: null,
-                    memberId: s.MemberID,
-                    name    : s.FullName,
-                    shirt   : null,
-                    thumbnail: s.ThumbnailURL || null,
-                    type    : 'staff',
-                    role    : s.TeamStaffRoleName || '',
-                  });
-                });
-              }
-            } catch(e) {}
-          }
+        for (const t of teams) {
+          try {
+            const staffList = await minfotbollGet(`/api/teamapi/initteamstaffadminvc?TeamID=${t.team_id}`, mfToken);
+            if (!Array.isArray(staffList)) continue;
+            staffList.forEach(s => {
+              if (!s.MemberID || !s.FullName) return;
+              if (seenStaffIds.has(s.MemberID)) return;
+              seenStaffIds.add(s.MemberID);
+              results.push({
+                teamId  : t.team_id,
+                teamName: t.team_name,
+                playerId: null,
+                memberId: s.MemberID,
+                name    : s.FullName,
+                shirt   : null,
+                thumbnail: s.ThumbnailURL || null,
+                type    : 'staff',
+                role    : s.TeamStaffRoleName || s.RoleName || '',
+              });
+            });
+          } catch(e) {}
         }
       } catch(e) {}
 
