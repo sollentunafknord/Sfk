@@ -719,7 +719,7 @@ module.exports = async (req, res) => {
         const descLower = (b.Description || '').trim().toLowerCase();
         const pid2 = playerName ? findPlayer(playerName) : null;
         if (descLower === 'in') inPid = pid2;
-        if (descLower === 'out') outPid = pid2;
+        if (descLower === 'out' || descLower === 'ut') outPid = pid2;
       }
 
       const clockSec = minute * 60; // dummy for below
@@ -859,7 +859,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _type4: (overview?.Blurbs||[]).filter(b=>b.TypeID===4).map(b=>({t:b.Title,d:b.Description,away:b.IsAwayTeamAction,min:b.GameMinute,isHome})),
+
 
 
 
