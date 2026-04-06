@@ -857,10 +857,11 @@ module.exports = async (req, res) => {
       return a.shirt - b.shirt;
     });
 
-    const sfkOutBlurbs = (overview?.Blurbs||[]).filter(b=>b.TypeID===4&&!(isHome?b.IsAwayTeamAction:!b.IsAwayTeamAction)&&(b.Description||'').toLowerCase()==='out');
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _sfkOuts: sfkOutBlurbs.map(b=>({title:b.Title,desc:b.Description,away:b.IsAwayTeamAction,min:b.GameMinute})),
+      _overviewKeys: overview ? Object.keys(overview) : [],
+      _blurbCount: overview?.Blurbs?.length,
+      _blurbTypes: [...new Set((overview?.Blurbs||[]).map(b=>b.TypeID))],
 
 
 
