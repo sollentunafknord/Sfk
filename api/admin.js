@@ -859,9 +859,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _overviewKeys: overview ? Object.keys(overview) : [],
-      _blurbCount: overview?.Blurbs?.length,
-      _blurbTypes: [...new Set((overview?.Blurbs||[]).map(b=>b.TypeID))],
+      _type4: (overview?.Blurbs||[]).filter(b=>b.TypeID===4).map(b=>({t:b.Title,d:b.Description,away:b.IsAwayTeamAction,min:b.GameMinute,isHome})),
 
 
 
