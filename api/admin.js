@@ -670,7 +670,7 @@ module.exports = async (req, res) => {
     // Forma no -> playerId ters map
     const shirtToPlayerId = {};
     Object.keys(playerShirtNos).forEach(pid => { shirtToPlayerId[parseInt(playerShirtNos[pid])] = parseInt(pid); });
-    console.log('shirtToPlayerId:', JSON.stringify(shirtToPlayerId));
+
     if (uniqueSubBlurbs.length === 0 && ALAG_TEAM_IDS.has(tid) && rosterData && rosterData.TimelineBlurbs) {
       rosterData.TimelineBlurbs.forEach(b => {
         const er = b.EREventInfo;
@@ -858,6 +858,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
+      _d: { s5: shirtToPlayerId[5], sc: uniqueSubBlurbs.length, subs: uniqueSubBlurbs.map(b=>({no:b._shirtNo,ii:b._isIn,io:b._isOut,m:b._minute})), ss: substitutions[165240] },
 
 
       homeTeam: header.HomeTeamDisplayName,
