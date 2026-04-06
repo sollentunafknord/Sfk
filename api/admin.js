@@ -715,11 +715,20 @@ module.exports = async (req, res) => {
       } else {
         const clockSec = b.GameClockSecond || 0;
         minute = Math.ceil(clockSec / 60);
-        const playerName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
-        const descLower = (b.Description || '').trim().toLowerCase();
-        const pid2 = playerName ? findPlayer(playerName) : null;
-        if (descLower === 'in') inPid = pid2;
-        if (descLower === 'out' || descLower === 'ut') outPid = pid2;
+        if (ALAG_TEAM_IDS.has(tid)) {
+          // A-lag: Title=oyuncu, Description=In/Ut
+          const playerName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
+          const descLower = (b.Description || '').trim().toLowerCase();
+          const pid2 = playerName ? findPlayer(playerName) : null;
+          if (descLower === 'in') inPid = pid2;
+          if (descLower === 'out' || descLower === 'ut') outPid = pid2;
+        } else {
+          // Diger takimlar: Title=giren oyuncu, Description=cikan oyuncu
+          const inName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
+          const outRaw = b.Description ? b.Description.replace(/^Out\s+/i, '').replace(/^\d+\.\s*/, '').trim() : null;
+          inPid = inName ? findPlayer(inName) : null;
+          outPid = outRaw ? findPlayer(outRaw) : null;
+        }
       }
 
       const clockSec = minute * 60; // dummy for below
