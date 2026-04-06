@@ -964,6 +964,42 @@ module.exports = async (req, res) => {
   }
 
   // Aktif takımların oyuncularını çek
+  if (action === 'fetchavatar') {
+    const memberId = parseInt(req.query.memberId);
+    if (!memberId) return res.status(400).json({ error: 'memberId krävs' });
+    try {
+      const mfToken = await getMinfotbollToken();
+      // activeroster'dan ara
+      const teams = await supabaseGet('/active_teams?is_active=eq.true&select=team_id,team_name');
+      let avatarUrl = null;
+      if (Array.isArray(teams)) {
+        for (const t of teams) {
+          try {
+            const staffList = await minfotbollGet(`/api/teamapi/initteamstaffadminvc?TeamID=${t.team_id}`, mfToken);
+            if (Array.isArray(staffList)) {
+              const found = staffList.find(s => s.MemberID === memberId);
+              if (found?.ThumbnailURL && !found.ThumbnailURL.includes('default')) {
+                avatarUrl = found.ThumbnailURL; break;
+              }
+            }
+          } catch(e) {}
+          if (avatarUrl) break;
+          try {
+            const players = await minfotbollGet(`/api/teamapi/initplayersadminvc?TeamID=${t.team_id}`, mfToken);
+            if (Array.isArray(players)) {
+              const found = players.find(p => p.MemberID === memberId);
+              if (found?.ThumbnailURL && !found.ThumbnailURL.includes('default')) {
+                avatarUrl = found.ThumbnailURL; break;
+              }
+            }
+          } catch(e) {}
+          if (avatarUrl) break;
+        }
+      }
+      return res.status(200).json({ avatarUrl });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
   if (action === 'activeroster') {
     try {
       const mfToken = await getMinfotbollToken();
