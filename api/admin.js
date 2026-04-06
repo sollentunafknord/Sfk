@@ -852,7 +852,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _subDebug: { uniqueSubBlurbsCount: uniqueSubBlurbs.length, isAlag: ALAG_TEAM_IDS.has(tid), timelineCount: rosterData?.TimelineBlurbs?.length },
+      _subDebug: { uniqueSubBlurbsCount: uniqueSubBlurbs.length, isAlag: ALAG_TEAM_IDS.has(tid), timelineCount: rosterData?.TimelineBlurbs?.length, subs: uniqueSubBlurbs.map(b=>({shirt:b._shirtNo,name:b._nameRaw,isIn:b._isIn,isOut:b._isOut,min:b._minute})), substitutions: JSON.stringify(substitutions).slice(0,300) },
 
       homeTeam: header.HomeTeamDisplayName,
       awayTeam: header.AwayTeamDisplayName,
