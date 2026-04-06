@@ -676,8 +676,8 @@ module.exports = async (req, res) => {
         if (!seenSubs.has(key)) {
           seenSubs.add(key);
           // "in" veya "ut" olduğunu belirle
-          const isIn = /in/i.test(details);
-          const isOut = /ut/i.test(details);
+          const isIn = details.endsWith(' in') || details.includes(' in ');
+          const isOut = details.endsWith(' ut') || details.includes(' ut ');
           const nameRaw = details.replace(/^\d+\s+/, '').replace(/\s+(in|ut)$/i, '').trim();
           uniqueSubBlurbs.push({
             _fromTimeline: true,
