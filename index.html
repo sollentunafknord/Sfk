@@ -884,8 +884,15 @@
                 <option value="">Välj spelare</option>
               </select></div>
             <div><label style="font-size:0.75rem;color:var(--muted);">MinFotboll MemberID</label>
-              <input type="number" id="editMemberId" placeholder="t.ex. 746699" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.9rem;">
-              <div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">Används för profilbild</div>
+              <div style="display:flex;gap:0.5rem;align-items:center;">
+                <input type="number" id="editMemberId" placeholder="t.ex. 746699" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.9rem;">
+                <button onclick="fetchAvatarForUser()" class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--accent);white-space:nowrap;font-size:0.8rem;" id="fetchAvatarBtn">🖼️ Hämta bild</button>
+              </div>
+              <div style="font-size:0.7rem;color:var(--muted);margin-top:2px;">Används för profilbild — ange MemberID och klicka Hämta bild</div>
+              <div id="editAvatarPreview" style="margin-top:0.5rem;display:none;">
+                <img id="editAvatarImg" src="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">
+                <span id="editAvatarStatus" style="font-size:0.75rem;color:var(--green);margin-left:0.5rem;"></span>
+              </div>
             </div>
             <div style="display:flex;gap:0.5rem;">
               <button onclick="saveEditUser()" class="btn btn-success">💾 Spara</button>
@@ -2361,6 +2368,31 @@ async function loadUserTeamAccess(userId) {
   }
 }
 
+async function fetchAvatarForUser() {
+  const memberId = parseInt(document.getElementById('editMemberId').value);
+  if (!memberId) { alert('Ange MemberID först'); return; }
+  const btn = document.getElementById('fetchAvatarBtn');
+  btn.disabled = true; btn.textContent = '⏳ Hämtar...';
+  try {
+    const r = await fetch('/api/admin?action=fetchavatar&memberId=' + memberId, {headers: authHeaders()});
+    const d = await r.json();
+    btn.disabled = false; btn.textContent = '🖼️ Hämta bild';
+    if (d.avatarUrl) {
+      const preview = document.getElementById('editAvatarPreview');
+      document.getElementById('editAvatarImg').src = d.avatarUrl;
+      document.getElementById('editAvatarStatus').textContent = 'Bild hittad! Spara för att uppdatera.';
+      preview.style.display = 'flex';
+      preview.style.alignItems = 'center';
+      window._editAvatarUrl = d.avatarUrl;
+    } else {
+      alert('Ingen bild hittades för detta MemberID');
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '🖼️ Hämta bild';
+    alert('Fel: ' + e.message);
+  }
+}
+
 async function saveEditUser() {
   if (!_editUserId) return;
   const username = document.getElementById('editUsername').value.trim();
@@ -2372,7 +2404,7 @@ async function saveEditUser() {
   try {
     const r = await fetch('/api/auth?action=edituser', {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({id: _editUserId, username, full_name, role, player_id, minfotboll_member_id})
+      body: JSON.stringify({id: _editUserId, username, full_name, role, player_id, minfotboll_member_id, avatar_url: window._editAvatarUrl || undefined})
     });
     const d = await r.json();
     if (!r.ok) { alert(d.error); return; }
