@@ -280,10 +280,13 @@ module.exports = async (req, res) => {
       const teamObj = Array.isArray(activeTeams) ? activeTeams.find(t => t.team_id === parseInt(teamId)) : null;
       const teamName = teamObj?.team_name;
       if (teamName) {
-        matches = matches.filter(m =>
-          (m.home_team || '').includes(teamName) ||
-          (m.away_team || '').includes(teamName)
-        );
+        // Esnek eşleşme — takım adındaki kelimeleri kontrol et
+        const teamWords = teamName.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        matches = matches.filter(m => {
+          const home = (m.home_team || '').toLowerCase();
+          const away = (m.away_team || '').toLowerCase();
+          return teamWords.every(w => home.includes(w)) || teamWords.every(w => away.includes(w));
+        });
       }
     }
 
