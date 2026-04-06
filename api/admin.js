@@ -701,7 +701,7 @@ module.exports = async (req, res) => {
       if (b._fromTimeline) {
         // Timeline formatı
         minute = b._minute;
-        const pid = b._shirtNo ? playerShirtNos && Object.keys(playerShirtNos).find(k => playerShirtNos[k] === b._shirtNo) : null;
+        const pid = b._shirtNo ? Object.keys(playerShirtNos).find(k => parseInt(playerShirtNos[k]) === parseInt(b._shirtNo)) : null;
         const pidByName = findPlayer(b._nameRaw);
         const resolvedPid = pid ? parseInt(pid) : pidByName;
         if (b._isIn) inPid = resolvedPid;
