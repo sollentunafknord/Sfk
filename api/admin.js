@@ -612,7 +612,7 @@ module.exports = async (req, res) => {
     }
 
     // ADIM 2: LINEUP — İlk 11'i işaretle
-    if (lineupTeam && lineupTeam.GameLineUpPlayers) {
+    if (lineupTeam && lineupTeam.GameLineUpPlayers && lineupTeam.GameLineUpPlayers.length > 0) {
       lineupTeam.GameLineUpPlayers.forEach(p => {
         if (!SFK_PLAYER_IDS_DYN.has(p.PlayerID)) return;
         squadPlayerIds.add(p.PlayerID);
@@ -621,6 +621,13 @@ module.exports = async (req, res) => {
         playerPositions[p.PlayerID] = p.Position || '';
         playerShirtNos[p.PlayerID] = playerShirtNos[p.PlayerID] || p.ShirtNumber || SFK_PLAYERS_DYN[p.PlayerID]?.shirt || 0;
         playerThumbnails[p.PlayerID] = playerThumbnails[p.PlayerID] || p.ThumbnailURL || null;
+      });
+    } else if (squadPlayerIds.size > 0) {
+      // GameLineUpPlayers boşsa ama roster varsa — roster'dan ilk 11'i starter say
+      const rosterIds = [...squadPlayerIds];
+      // Kaleci varsa onu bul, yoksa forma numarasına göre sırala
+      rosterIds.forEach(pid => {
+        playerIsStarter[pid] = true;
       });
     }
 
