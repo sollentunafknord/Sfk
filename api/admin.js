@@ -669,7 +669,8 @@ module.exports = async (req, res) => {
     const ALAG_TEAM_IDS = new Set([68503, 201387]);
     // Forma no -> playerId ters map
     const shirtToPlayerId = {};
-    Object.keys(playerShirtNos).forEach(pid => { shirtToPlayerId[parseInt(playerShirtNos[pid])] = parseInt(pid); }); // A-lag Herr, A-lag Dam
+    Object.keys(playerShirtNos).forEach(pid => { shirtToPlayerId[parseInt(playerShirtNos[pid])] = parseInt(pid); });
+    console.log('shirtToPlayerId:', JSON.stringify(shirtToPlayerId));
     if (uniqueSubBlurbs.length === 0 && ALAG_TEAM_IDS.has(tid) && rosterData && rosterData.TimelineBlurbs) {
       rosterData.TimelineBlurbs.forEach(b => {
         const er = b.EREventInfo;
