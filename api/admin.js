@@ -644,6 +644,8 @@ module.exports = async (req, res) => {
     // Değişiklikleri işlemeden önce duplicate'leri temizle ve SIRALA
     const seenSubs = new Set();
     const uniqueSubBlurbs = [];
+
+    // Önce overview.Blurbs'ten çek
     if (overview && overview.Blurbs) {
       overview.Blurbs.forEach(b => {
         if (b.TypeID !== 4) return;
@@ -659,16 +661,60 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Eğer overview boşsa TimelineBlurbs'ten çek (A-lag Herr gibi takımlar için)
+    if (uniqueSubBlurbs.length === 0 && rosterData && rosterData.TimelineBlurbs) {
+      rosterData.TimelineBlurbs.forEach(b => {
+        const er = b.EREventInfo;
+        if (!er || er.TypeID !== 4) return;
+        const isOurTeam = isHome ? !er.IsAwayTeamAction : er.IsAwayTeamAction;
+        if (!isOurTeam) return;
+        // DetailsText: "5 Zeberga ut" veya "19 Ennart in"
+        const details = er.DetailsText || '';
+        const minute = parseInt((er.GameMinute || '0').replace("'", '')) || 0;
+        const key = `${details}|${minute}`;
+        if (!seenSubs.has(key)) {
+          seenSubs.add(key);
+          // "in" veya "ut" olduğunu belirle
+          const isIn = /in/i.test(details);
+          const isOut = /ut/i.test(details);
+          const nameRaw = details.replace(/^\d+\s+/, '').replace(/\s+(in|ut)$/i, '').trim();
+          uniqueSubBlurbs.push({
+            _fromTimeline: true,
+            _isIn: isIn,
+            _isOut: isOut,
+            _nameRaw: nameRaw,
+            _shirtNo: parseInt(details.split(' ')[0]) || 0,
+            _minute: minute,
+            GameClockSecond: minute * 60,
+          });
+        }
+      });
+    }
+
     // Kronolojik sıraya koy - önce erken dakikalar işlensin
     uniqueSubBlurbs.sort((a, b) => (a.GameClockSecond || 0) - (b.GameClockSecond || 0));
 
     uniqueSubBlurbs.forEach(b => {
-      const clockSec = b.GameClockSecond || 0;
-      const minute = Math.ceil(clockSec / 60);
-      const inName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
-      const outRaw = b.Description ? b.Description.replace(/^Out\s+/i, '').replace(/^\d+\.\s*/, '').trim() : null;
-      const inPid = inName ? findPlayer(inName) : null;
-      const outPid = outRaw ? findPlayer(outRaw) : null;
+      let inPid = null, outPid = null, minute = 0;
+
+      if (b._fromTimeline) {
+        // Timeline formatı
+        minute = b._minute;
+        const pid = b._shirtNo ? playerShirtNos && Object.keys(playerShirtNos).find(k => playerShirtNos[k] === b._shirtNo) : null;
+        const pidByName = findPlayer(b._nameRaw);
+        const resolvedPid = pid ? parseInt(pid) : pidByName;
+        if (b._isIn) inPid = resolvedPid;
+        if (b._isOut) outPid = resolvedPid;
+      } else {
+        const clockSec = b.GameClockSecond || 0;
+        minute = Math.ceil(clockSec / 60);
+        const inName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
+        const outRaw = b.Description ? b.Description.replace(/^Out\s+/i, '').replace(/^\d+\.\s*/, '').trim() : null;
+        inPid = inName ? findPlayer(inName) : null;
+        outPid = outRaw ? findPlayer(outRaw) : null;
+      }
+
+      const clockSec = minute * 60; // dummy for below
       if (inPid && SFK_PLAYER_IDS_DYN.has(inPid)) {
         squadPlayerIds.add(inPid);
         if (!substitutions[inPid]) substitutions[inPid] = [];
