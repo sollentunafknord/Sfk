@@ -1656,15 +1656,18 @@ function openManualEntry() {
   const gameInfo = state.currentDetail ? 
     `${state.currentDetail.homeTeam} vs ${state.currentDetail.awayTeam} (${state.currentDetail.homeScore}-${state.currentDetail.awayScore})` : '';
 
-  // Takımın oyuncularını bul
+  // Takımın oyuncularını bul — sadece ilgili takım
+  const teamName = Object.values(SFK_PLAYERS).find(p => p.team && state.currentDetail?.homeTeam?.includes(p.team))?.team
+    || Object.values(SFK_PLAYERS).find(p => p.team && state.currentDetail?.awayTeam?.includes(p.team))?.team
+    || null;
+
   const teamPlayers = Object.entries(SFK_PLAYERS)
-    .filter(([id, p]) => {
-      if (!state.currentDetail) return false;
-      const detail = state.currentDetail;
-      const isHome = detail.homeTeam?.includes('Sollentuna');
-      // Tüm SFK oyuncularını göster
-      return true;
-    })
+    .filter(([id, p]) => !teamName || p.team === teamName)
+    .sort((a, b) => (a[1].shirt || 0) - (b[1].shirt || 0));
+
+  // Diğer oyuncular (başka takımlardan eklenebilir)
+  const otherPlayers = Object.entries(SFK_PLAYERS)
+    .filter(([id, p]) => teamName && p.team !== teamName)
     .sort((a, b) => (a[1].shirt || 0) - (b[1].shirt || 0));
 
   // Modal oluştur
@@ -1722,13 +1725,55 @@ function openManualEntry() {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+      <div style="margin-top:0.75rem;">
+        <button onclick="toggleExtraPlayers()" class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:0.78rem;">
+          ➕ Lägg till spelare från andra lag
+        </button>
+        <div id="extraPlayersSection" style="display:none;margin-top:0.5rem;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0.5rem;">
+          ${otherPlayers.map(([id, p]) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0.5rem;font-size:0.82rem;">
+              <span>#${p.shirt||'—'} ${p.name} <span style="color:var(--muted);font-size:0.72rem;">${p.team}</span></span>
+              <button onclick="addExtraPlayer(${id})" class="btn" style="padding:0.2rem 0.6rem;font-size:0.75rem;background:var(--surface2);border:1px solid var(--border);">+ Lägg till</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem;margin-top:0.75rem;">
         <button onclick="applyManualEntry()" class="btn btn-success" style="flex:1;">💾 Tillämpa och spara</button>
         <button onclick="document.getElementById('manualEntryModal').remove()" class="btn" style="background:var(--surface2);border:1px solid var(--border);">Avbryt</button>
       </div>
     </div>
   `;
   modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+}
+
+function toggleExtraPlayers() {
+  const el = document.getElementById('extraPlayersSection');
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function addExtraPlayer(playerId) {
+  const id = parseInt(playerId);
+  const info = SFK_PLAYERS[id];
+  if (!info) return;
+  // Zaten tabloda var mı?
+  if (document.querySelector(`.m-check[data-id="${id}"]`)) return;
+  const tbody = document.querySelector('#manualEntryModal tbody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.id = `mrow_${id}`;
+  tr.innerHTML = `
+    <td><input type="checkbox" class="m-check" data-id="${id}" checked style="width:16px;height:16px;accent-color:var(--accent);"></td>
+    <td style="color:var(--muted);">#${info.shirt||'—'}</td>
+    <td style="font-weight:500;">${info.name} <span style="font-size:0.7rem;color:var(--muted);">(${info.team})</span></td>
+    <td><select class="m-role" data-id="${id}" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem 0.4rem;border-radius:4px;font-size:0.8rem;"><option value="11">11</option><option value="bank">Bänk</option></select></td>
+    <td><input type="number" class="m-min" data-id="${id}" value="90" min="0" max="120" style="width:55px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:0.2rem 0.4rem;text-align:center;"></td>
+    <td><input type="number" class="m-goals" data-id="${id}" value="0" min="0" style="width:45px;background:var(--bg);border:1px solid var(--border);color:var(--green);border-radius:4px;padding:0.2rem 0.4rem;text-align:center;"></td>
+    <td><input type="number" class="m-assists" data-id="${id}" value="0" min="0" style="width:45px;background:var(--bg);border:1px solid var(--border);color:var(--accent);border-radius:4px;padding:0.2rem 0.4rem;text-align:center;"></td>
+    <td><input type="number" class="m-yellow" data-id="${id}" value="0" min="0" style="width:45px;background:var(--bg);border:1px solid var(--border);color:var(--yellow);border-radius:4px;padding:0.2rem 0.4rem;text-align:center;"></td>
+    <td><input type="number" class="m-red" data-id="${id}" value="0" min="0" style="width:45px;background:var(--bg);border:1px solid var(--border);color:var(--red);border-radius:4px;padding:0.2rem 0.4rem;text-align:center;"></td>
+  `;
+  tbody.appendChild(tr);
 }
 
 function applyManualEntry() {
