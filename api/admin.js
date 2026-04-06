@@ -661,8 +661,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Eğer overview boşsa TimelineBlurbs'ten çek (A-lag Herr gibi takımlar için)
-    if (uniqueSubBlurbs.length === 0 && rosterData && rosterData.TimelineBlurbs) {
+    // Eğer overview boşsa TimelineBlurbs'ten çek — sadece A-lag takımları için
+    const ALAG_TEAM_IDS = new Set([68503, 201387]); // A-lag Herr, A-lag Dam
+    if (uniqueSubBlurbs.length === 0 && ALAG_TEAM_IDS.has(tid) && rosterData && rosterData.TimelineBlurbs) {
       rosterData.TimelineBlurbs.forEach(b => {
         const er = b.EREventInfo;
         if (!er || er.TypeID !== 4) return;
