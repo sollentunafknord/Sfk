@@ -567,8 +567,7 @@ module.exports = async (req, res) => {
     // Seçili rapportör varsa filtrele
     const selectedReporterId = req.query.reporterId ? parseInt(req.query.reporterId) : null;
 
-    console.log('DEBUG isHome:', header?.HomeTeamID, tid, header?.HomeTeamID === tid);
-    const isHome = header.HomeTeamID === tid;
+    const isHome = header.HomeTeamID === tid || lineups?.HomeTeamGameTeamRoster?.TeamID === tid;
     const lineupTeam = isHome ? lineups.HomeTeamLineUp : lineups.AwayTeamLineUp;
     const rosterTeam = isHome ? lineups.HomeTeamGameTeamRoster : lineups.AwayTeamGameTeamRoster;
 
