@@ -715,10 +715,11 @@ module.exports = async (req, res) => {
       } else {
         const clockSec = b.GameClockSecond || 0;
         minute = Math.ceil(clockSec / 60);
-        const inName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
-        const outRaw = b.Description ? b.Description.replace(/^Out\s+/i, '').replace(/^\d+\.\s*/, '').trim() : null;
-        inPid = inName ? findPlayer(inName) : null;
-        outPid = outRaw ? findPlayer(outRaw) : null;
+        const playerName = b.Title ? b.Title.replace(/^\d+\.\s*/, '').trim() : null;
+        const descLower = (b.Description || '').trim().toLowerCase();
+        const pid2 = playerName ? findPlayer(playerName) : null;
+        if (descLower === 'in') inPid = pid2;
+        if (descLower === 'out') outPid = pid2;
       }
 
       const clockSec = minute * 60; // dummy for below
@@ -858,7 +859,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _d: { s5: shirtToPlayerId[5], sc: uniqueSubBlurbs.length, overviewBlurbsCount: overview?.Blurbs?.length, firstSub: overview?.Blurbs?.find(b=>b.TypeID===4), subs: uniqueSubBlurbs.map(b=>({no:b._shirtNo,ii:b._isIn,io:b._isOut,m:b._minute,ft:b._fromTimeline,t:b.Title,d:b.Description})), ss: substitutions[165240] },
+
 
 
       homeTeam: header.HomeTeamDisplayName,
