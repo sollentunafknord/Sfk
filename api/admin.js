@@ -398,6 +398,9 @@ function getGameType(leagueName) {
 }
 
 module.exports = async (req, res) => {
+  if (req.query.action === 'version') {
+    return res.status(200).json({ version: '2.1', endsWith: true });
+  }
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Content-Type', 'application/json');
