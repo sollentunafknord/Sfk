@@ -19,6 +19,30 @@ const SFK_PLAYER_IDS = new Set([
   905478,840406,923089,641517,923053,572533,734915,901342,
   865395,894640,844397,781978,922225,719424,748624,719632,
   798410,571065,865475,
+  // P17A
+  599142:{name:'Albin Wahlberg',shirt:99},
+  549789:{name:'Anthony Törnström',shirt:9},
+  527841:{name:'August Swanström',shirt:14},
+  555351:{name:'Benjamin Faruk Avci Kücükgöl',shirt:15},
+  654299:{name:'Danial Majed',shirt:19},
+  575597:{name:'Elias Yilmaz',shirt:21},
+  572780:{name:'Ivar Tiberg',shirt:8},
+  659792:{name:'Jeyson Sissah Nkanga Ngudi Jose',shirt:4},
+  65947:{name:'Leonel Mikhail',shirt:20},
+  632943:{name:'Liam Mengana Jarnebäck',shirt:18},
+  573259:{name:'Love Nytén',shirt:2},
+  677007:{name:'Lucas Hansson',shirt:27},
+  639034:{name:'Maximilian Shahbazi',shirt:11},
+  644855:{name:'Melker Gottås',shirt:1},
+  527850:{name:'Rasmus Wallenberg',shirt:5},
+  684844:{name:'Simon Fröjd Bergblom',shirt:12},
+  660285:{name:'Simon Girmay Selemon',shirt:3},
+  686104:{name:'Tobias Sörling',shirt:10},
+  595628:{name:'Valter Ekehov',shirt:6},
+  558769:{name:'Victor Gummesson',shirt:17},
+  555359:{name:'Vilhelm Sjödin',shirt:23},
+  178621:{name:'Ville Eklund',shirt:7},
+  639197:{name:'Vincent Hjorth',shirt:88},
   // A-lag Herr
   45070,507025,15860,103332,128718,561126,129841,127111,
   165240,130039,265398,506367,17431,158153,128664,180303,
@@ -29,7 +53,9 @@ const SFK_PLAYER_IDS = new Set([
   583472,558818,571643,599134,583487,572832,571655,572826,571650,
   572840,573260,684078,572296,572304,583480,663383,565476,572297,
   589858,539763,571740,638706
-]);
+,
+  599142, 549789, 527841, 555351, 654299, 575597, 572780, 659792, 65947, 632943, 573259, 677007, 639034, 644855, 527850, 684844, 660285, 686104, 595628, 558769, 555359, 178621, 639197
+]);;
 
 const SFK_PLAYERS = {
   // P16A
@@ -798,7 +824,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       gameId: parseInt(gameId),
-      _debug: { homeTeamId: header?.HomeTeamID, awayTeamId: header?.AwayTeamID, tid, homeRosterKeys: lineups?.HomeTeamGameTeamRoster ? Object.keys(lineups.HomeTeamGameTeamRoster) : [], homeRosterTeamId: lineups?.HomeTeamGameTeamRoster?.TeamID, homePlayerCount: lineups?.HomeTeamGameTeamRoster?.Players?.length, homeGamePlayers: lineups?.HomeTeamGameTeamRoster?.GamePlayers?.length },
+
       homeTeam: header.HomeTeamDisplayName,
       awayTeam: header.AwayTeamDisplayName,
       homeScore: header.HomeTeamScore,
