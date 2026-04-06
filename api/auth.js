@@ -261,11 +261,11 @@ module.exports = async (req, res) => {
     const token = (req.headers.authorization || '').replace('Bearer ', '');
     const payload = verifyToken(token);
     if (!payload || (payload.role !== 'admin' && payload.role !== 'antrenor' && payload.role !== 'klubbledare')) return res.status(403).json({ error: 'Behörighet saknas' });
-    const { id, username, full_name, role, player_id, minfotboll_member_id } = req.body || {};
+    const { id, username, full_name, role, player_id, minfotboll_member_id, avatar_url: providedAvatar } = req.body || {};
     if (!id || !username) return res.status(400).json({ error: 'Information saknas' });
-    // MemberID varsa TeamStaff'tan avatar çek
-    let avatar_url = null;
-    if (minfotboll_member_id) {
+    // Frontend'den avatar_url gönderildiyse direkt kullan, yoksa MemberID'den çek
+    let avatar_url = providedAvatar || null;
+    if (!avatar_url && minfotboll_member_id) {
       try {
         const mfToken = process.env.MINFOTBOLL_ACCESS_TOKEN;
         const matches = await supabaseGet('/matches?select=game_id&order=game_date.desc&limit=5');
