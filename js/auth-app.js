@@ -115,7 +115,6 @@ function showApp() {
   if (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') {
     loadLeagueFilters().then(() => {
       initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
-      initMultiDropdown('statsPlayerBtn', 'statsPlayerList');
     });
     initPlayerFilter();
     loadActiveTeamDropdown();
