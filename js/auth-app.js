@@ -113,11 +113,14 @@ function showApp() {
     }
   }
   if (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') {
-    loadLeagueFilters().then(() => {
-      initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
+    // Önce takım listesini yükle (antrenör için _activeTeamsCache dolsun)
+    // Sonra liga ve oyuncu filtrelerini yükle
+    loadActiveTeamDropdown().then(() => {
+      loadLeagueFilters().then(() => {
+        initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
+      });
+      initPlayerFilter();
     });
-    initPlayerFilter();
-    loadActiveTeamDropdown();
   }
   if (u.role === 'oyuncu') {
     loadOyuncuLeagueFilters().then(() => {
