@@ -239,17 +239,10 @@ function getSelectedPlayers() {
 }
 
 async function initPlayerFilter() {
-  // İlk yüklemede mevcut takım seçimine göre oyuncu listesini doldur
   const teamId = parseInt(document.getElementById('statsTeam')?.value) || null;
   await updateStatsPlayerFilter(teamId);
-  // Dropdown init
-  const btn = document.getElementById('statsPlayerBtn');
-  const list = document.getElementById('statsPlayerList');
-  if (btn && list) {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); list.classList.toggle('open'); });
-    document.addEventListener('click', () => list.classList.remove('open'));
-    list.addEventListener('click', (e) => e.stopPropagation());
-  }
+  // initMultiDropdown auth-app.js'de çağrılıyor
+  initMultiDropdown('statsPlayerBtn', 'statsPlayerList');
 }
 
 function setAllLeagues(checked) {
