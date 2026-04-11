@@ -153,7 +153,7 @@ module.exports = async (req, res) => {
 
     const result = await sendEmail(
       recipients,
-      `🏟️ Omklädningsrum – ${from} till ${to}`,
+      `(Påminnelse) 🏟️ Omklädningsrum – ${from} till ${to}`,
       html
     );
 
