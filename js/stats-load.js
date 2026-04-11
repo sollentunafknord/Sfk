@@ -167,7 +167,13 @@ async function updateStatsPlayerFilter(teamId) {
     const r = await fetch('/api/admin?action=activeroster', {headers: authHeaders()});
     const players = await r.json();
     let filtered = Array.isArray(players) ? players : [];
-    if (teamId) filtered = filtered.filter(p => p.teamId === teamId);
+    // Antrenör: sadece kendi takım(lar)ının oyuncuları
+    if (state.user.role === 'antrenor' && window._activeTeamsCache) {
+      const allowedTeamIds = new Set(window._activeTeamsCache.map(t => t.team_id));
+      filtered = filtered.filter(p => allowedTeamIds.has(p.teamId));
+    } else if (teamId) {
+      filtered = filtered.filter(p => p.teamId === teamId);
+    }
     el.innerHTML = filtered.map(p =>
       `<label><input type="checkbox" class="player-filter" value="${p.playerId}" checked> #${p.shirt||'—'} ${p.name}</label>`
     ).join('');
@@ -190,7 +196,13 @@ async function loadLeagueFilters() {
     const r = await fetch('/api/admin?action=savedmatches', {headers: authHeaders()});
     const matches = await r.json();
     if (!Array.isArray(matches)) return;
-    const leagues = [...new Set(matches.map(m => m.league_name).filter(Boolean))].sort();
+    // Antrenör: sadece kendi takımlarının maçlarından liga listesi
+    let filteredMatches = matches;
+    if (state.user.role === 'antrenor' && window._activeTeamsCache) {
+      const allowedTeamIds = new Set(window._activeTeamsCache.map(t => String(t.team_id)));
+      filteredMatches = matches.filter(m => allowedTeamIds.has(String(m.team_id)) || allowedTeamIds.has(String(m.home_team_id)) || allowedTeamIds.has(String(m.away_team_id)));
+    }
+    const leagues = [...new Set(filteredMatches.map(m => m.league_name).filter(Boolean))].sort();
     
     // Admin dropdown
     const adminEl = document.getElementById('leagueFilterItems');
@@ -414,7 +426,13 @@ async function loadOyuncuLeagueFilters() {
     const r = await fetch('/api/admin?action=savedmatches', {headers: authHeaders()});
     const matches = await r.json();
     if (!Array.isArray(matches)) return;
-    const leagues = [...new Set(matches.map(m => m.league_name).filter(Boolean))].sort();
+    // Antrenör: sadece kendi takımlarının maçlarından liga listesi
+    let filteredMatches = matches;
+    if (state.user.role === 'antrenor' && window._activeTeamsCache) {
+      const allowedTeamIds = new Set(window._activeTeamsCache.map(t => String(t.team_id)));
+      filteredMatches = matches.filter(m => allowedTeamIds.has(String(m.team_id)) || allowedTeamIds.has(String(m.home_team_id)) || allowedTeamIds.has(String(m.away_team_id)));
+    }
+    const leagues = [...new Set(filteredMatches.map(m => m.league_name).filter(Boolean))].sort();
     const el = document.getElementById('oyuncuLeagueFilterItems');
     if (!el) return;
     if (el.children.length > 0) return;
