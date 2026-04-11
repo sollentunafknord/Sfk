@@ -166,7 +166,8 @@ async function updateStatsPlayerFilter(teamId) {
   try {
     const r = await fetch('/api/admin?action=activeroster', {headers: authHeaders()});
     const players = await r.json();
-    let filtered = Array.isArray(players) ? players : [];
+    // Sadece oyuncular — staff (tränare, lag ledare) hariç
+    let filtered = Array.isArray(players) ? players.filter(p => p.type !== 'staff' && p.playerId !== null) : [];
     // Antrenör: sadece kendi takım(lar)ının oyuncuları
     if (state.user.role === 'antrenor' && window._activeTeamsCache) {
       const allowedTeamIds = new Set(window._activeTeamsCache.map(t => t.team_id));
