@@ -34,7 +34,7 @@ function supabaseGet(path) {
 function sendEmail(to, subject, html) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      from: 'Sollentuna FK <omkladningsrum@sollentuna-fk.vercel.app>',
+      from: 'Sollentuna FK <onboarding@resend.dev>',
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
