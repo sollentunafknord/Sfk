@@ -450,6 +450,8 @@ function initMultiDropdown(btnId, listId) {
   const btn = document.getElementById(btnId);
   const list = document.getElementById(listId);
   if (!btn || !list) return;
+  if (btn._initialized) return; // Tekrar eklemeyi önle
+  btn._initialized = true;
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     list.classList.toggle('open');
