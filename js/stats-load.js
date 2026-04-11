@@ -466,3 +466,8 @@ function initMultiDropdown(btnId, listId) {
   list.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', updateLabel));
 }
 
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
+  initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
+});
