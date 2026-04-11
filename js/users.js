@@ -356,3 +356,84 @@ async function deleteUser(id, username) {
 // ===================== OYUNCU FONKSİYONLARI =====================
 // → stats-render.js
 function oyuncuTab(tab) {
+
+// ===================== AKTİF TAKIMLAR =====================
+async function loadActiveTeams() {
+  const el = document.getElementById('activeTeamsList');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>';
+  try {
+    const r = await fetch('/api/admin?action=getactiveteams', {headers: authHeaders()});
+    const teams = await r.json();
+    if (!Array.isArray(teams) || !teams.length) {
+      el.innerHTML = '<div class="empty-state">Takım bulunamadı</div>';
+      return;
+    }
+    var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;margin-bottom:1rem;">';
+    teams.forEach(function(t) {
+      var isActive = t.is_active;
+      html += '<div id="ateam_' + t.team_id + '" style="background:var(--surface);border:1px solid ' + (isActive ? 'var(--accent)' : 'var(--border)') + ';border-radius:10px;padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">';
+      html += '<div>';
+      html += '<div style="font-weight:600;font-size:0.9rem;">' + t.team_name + '</div>';
+      html += '<div style="font-size:0.75rem;color:var(--muted);">ID: ' + t.team_id + '</div>';
+      html += '</div>';
+      html += '<label style="display:flex;align-items:center;cursor:pointer;">';
+      html += '<input type="checkbox" id="atoggle_' + t.team_id + '" ' + (isActive ? 'checked' : '') + ' onchange="onActiveTeamChange(' + t.team_id + ',this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);">';
+      html += '</label>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:1rem;">';
+    html += '<button onclick="saveActiveTeams()" class="btn btn-primary" id="saveActiveTeamsBtn">💾 Spara</button>';
+    html += '<span id="saveActiveTeamsMsg" style="font-size:0.85rem;"></span>';
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state">Hata: ' + e.message + '</div>';
+  }
+}
+
+function onActiveTeamChange(teamId, isActive) {
+  // Sadece kart border'ını güncelle — kayıt Spara butonuyla olur
+  var card = document.getElementById('ateam_' + teamId);
+  if (card) card.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+}
+
+async function saveActiveTeams() {
+  const btn = document.getElementById('saveActiveTeamsBtn');
+  const msg = document.getElementById('saveActiveTeamsMsg');
+  btn.disabled = true;
+  msg.style.color = 'var(--muted)';
+  msg.textContent = 'Sparar...';
+
+  // Tüm checkbox'ları oku
+  var checkboxes = document.querySelectorAll('[id^="atoggle_"]');
+  var updates = [];
+  checkboxes.forEach(function(cb) {
+    var teamId = parseInt(cb.id.replace('atoggle_', ''));
+    updates.push({team_id: teamId, is_active: cb.checked});
+  });
+
+  try {
+    // Her takımı güncelle
+    var errors = 0;
+    await Promise.all(updates.map(async function(u) {
+      const r = await fetch('/api/admin?action=setactiveteam', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+        body: JSON.stringify(u)
+      });
+      const d = await r.json();
+      if (!d.ok) errors++;
+    }));
+    msg.style.color = errors ? '#f55' : '#4caf50';
+    msg.textContent = errors ? errors + ' hata oluştu' : '✅ Kaydedildi!';
+    setTimeout(function(){ msg.textContent = ''; }, 3000);
+  } catch(e) {
+    msg.style.color = '#f55';
+    msg.textContent = 'Hata: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+// ==========================================================
