@@ -150,6 +150,9 @@ function showApp() {
   const statsTab = document.querySelector('#viewAdmin .tab[onclick*="stats"]');
   if (matchesTab) matchesTab.style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'inline-block' : 'none';
   if (statsTab) statsTab.style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'inline-block' : 'none';
+  // Email kontrolü — boşsa uyarı modal göster
+  checkNotificationEmail(u);
+
   // Oyuncu için tarih alanlarını doldur
   if (u.role === 'oyuncu') {
     const today = new Date().toISOString().slice(0,10);
@@ -170,5 +173,52 @@ function setError(msg) {
   const b = document.getElementById('errorBox');
   b.textContent = msg || '';
   b.style.display = msg ? 'block' : 'none';
+
+function checkNotificationEmail(u) {
+  // Sadece oyuncu olmayanlar için kontrol et
+  if (!u || u.notification_email) return;
+  // Daha önce bu oturumda sorulduysa tekrar sorma
+  if (sessionStorage.getItem('emailChecked')) return;
+  sessionStorage.setItem('emailChecked', '1');
+
+  // Modal göster
+  const modal = document.getElementById('emailReminderModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+async function saveNotificationEmail() {
+  const input = document.getElementById('notificationEmailInput');
+  const msg = document.getElementById('notificationEmailMsg');
+  const email = input ? input.value.trim() : '';
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Ogiltig e-postadress';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/auth?action=updateemail', {
+      method: 'POST',
+      headers: Object.assign({'Content-Type': 'application/json'}, authHeaders()),
+      body: JSON.stringify({ notification_email: email || null })
+    });
+    const d = await r.json();
+    if (d.success) {
+      // state'i güncelle
+      state.user.notification_email = email || null;
+      localStorage.setItem('sfk_user', JSON.stringify(state.user));
+      closeEmailReminderModal();
+    }
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Fel: ' + e.message;
+  }
+}
+
+function closeEmailReminderModal() {
+  const modal = document.getElementById('emailReminderModal');
+  if (modal) modal.style.display = 'none';
+}
 }
 
