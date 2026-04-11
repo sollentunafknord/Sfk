@@ -220,5 +220,4 @@ function closeEmailReminderModal() {
   const modal = document.getElementById('emailReminderModal');
   if (modal) modal.style.display = 'none';
 }
-}
 
