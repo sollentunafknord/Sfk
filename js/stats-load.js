@@ -447,7 +447,11 @@ function initMultiDropdown(btnId, listId) {
   btn._initialized = true;
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    list.classList.toggle('open');
+    const isOpen = list.classList.contains('open');
+    // Tüm açık dropdownları kapat
+    document.querySelectorAll('.ms-dropdown-list.open').forEach(l => l.classList.remove('open'));
+    // Eğer kapalıysa aç
+    if (!isOpen) list.classList.add('open');
   });
   document.addEventListener('click', () => list.classList.remove('open'));
   list.addEventListener('click', (e) => e.stopPropagation());
