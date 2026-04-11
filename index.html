@@ -3798,12 +3798,33 @@ function makeTimeSelect(id, defaultVal) {
     + makeTimeOptions(defaultVal) + '</select>';
 }
 
+// Takım öncelik sırası — büyük takım = düşük sayı = yüksek öncelik
+function getTeamPriority(teamName) {
+  if (!teamName) return 99;
+  var n = teamName.toLowerCase();
+  if (n.includes('a-lag') || (n.includes('sollentuna') && (n.includes('herr') || n.includes('dam')) && !n.includes('p1') && !n.includes('p14') && !n.includes('utv'))) return 1;
+  if (n.includes('p17')) return 2;
+  if (n.includes('p16') && !n.includes('utv') && !n.includes('p16u')) return 3;
+  if (n.includes('p18')) return 4;
+  if (n.includes('p16u') || n.includes('p16 u') || n.includes('utv')) return 5;
+  if (n.includes('p14')) return 6;
+  return 7;
+}
+
+// Arena → facility group (aynı soyunma odası grubu)
+function getFacilityGroup(arenaId) {
+  if (NORRVIKEN_ARENAS.includes(arenaId)) return 'norrviken';
+  if (EDSBERGS_ARENAS.includes(arenaId))  return 'edsberg';
+  return 'arena_' + arenaId; // Bilinmeyen arena kendi grubu
+}
+
 function checkDoubleBooking() {
   var games = window._omkNastaGames || [];
   if (!games.length) return;
 
   // Tüm oda+saat bilgilerini topla
-  var slots = []; // {gameId, team, room, inTime, outTime, arenaId, date}
+  // facilityGroup: aynı soyunma odasını paylaşan arena grubu (arena ID'sinden bağımsız)
+  var slots = []; // {gameId, team, room, inTime, outTime, facilityGroup, date, teamName, priority}
   games.forEach(function(g) {
     var homeRoom = document.getElementById('nasta_home_' + g.gameId)?.value;
     var awayRoom = document.getElementById('nasta_away_' + g.gameId)?.value;
@@ -3811,38 +3832,79 @@ function checkDoubleBooking() {
     var homeOut  = document.getElementById('nasta_home_out_' + g.gameId)?.value;
     var awayIn   = document.getElementById('nasta_away_in_' + g.gameId)?.value;
     var awayOut  = document.getElementById('nasta_away_out_' + g.gameId)?.value;
-    var date     = g.gameDate ? g.gameDate.slice(0, 10) : ''; // YYYY-MM-DD
-    if (homeRoom) slots.push({gameId: g.gameId, team:'home', room: homeRoom, inTime: homeIn, outTime: homeOut, arenaId: g.arenaId, date: date});
-    if (awayRoom) slots.push({gameId: g.gameId, team:'away', room: awayRoom, inTime: awayIn, outTime: awayOut, arenaId: g.arenaId, date: date});
+    var date     = g.gameDate ? g.gameDate.slice(0, 10) : '';
+    var fg       = getFacilityGroup(g.arenaId);
+    if (homeRoom) slots.push({gameId: g.gameId, team:'home', room: homeRoom, inTime: homeIn, outTime: homeOut, facilityGroup: fg, date: date, teamName: g.homeTeam || '', priority: getTeamPriority(g.homeTeam)});
+    if (awayRoom) slots.push({gameId: g.gameId, team:'away', room: awayRoom, inTime: awayIn, outTime: awayOut, facilityGroup: fg, date: date, teamName: g.awayTeam || '', priority: getTeamPriority(g.awayTeam)});
   });
 
-  // Çakışan slot'ları bul
-  var conflictKeys = new Set();
+  // Çakışan slot'ları bul — aynı facilityGroup içinde arena farkı gözetmeksizin
+  var conflictKeys = new Set();       // kırmızı çerçeve için
+  var lamnaKeys    = new Set();       // "lämna rum" önerisi için (küçük takım çakışınca)
+  var unresolvable = new Set();       // çözüm bulunamayan çakışmalar (her iki taraf da büyük)
+
   for (var i = 0; i < slots.length; i++) {
     for (var j = i + 1; j < slots.length; j++) {
       var a = slots[i], b = slots[j];
-      if (a.date !== b.date) continue;          // Farklı gün — çakışma olmaz
-      if (a.arenaId !== b.arenaId) continue;    // Farklı arena — çakışma olmaz
-      if (a.room !== b.room || !a.room) continue; // Farklı oda
-      // Saat çakışıyor mu? (a.in < b.out && b.in < a.out)
-      if (a.inTime < b.outTime && b.inTime < a.outTime) {
+      if (a.date !== b.date) continue;                       // Farklı gün
+      if (a.facilityGroup !== b.facilityGroup) continue;    // Farklı tesis (farklı soyunma odası)
+      if (a.room !== b.room || !a.room) continue;           // Farklı oda
+      // Saat çakışıyor mu?
+      if (!(a.inTime < b.outTime && b.inTime < a.outTime)) continue;
+
+      // Çakışma var — önceliğe göre karar ver
+      var aIsBigger = a.priority < b.priority;
+      var bIsBigger = b.priority < a.priority;
+      var samePriority = a.priority === b.priority;
+
+      if (samePriority) {
+        // Eşit öncelik — ikisi de büyük veya ikisi de küçük, çözüm bulunamıyor
         conflictKeys.add(a.gameId + '_' + a.team);
         conflictKeys.add(b.gameId + '_' + b.team);
+        unresolvable.add(a.gameId + '_' + a.team);
+        unresolvable.add(b.gameId + '_' + b.team);
+      } else {
+        // Büyük takım öncelikli — küçük takıma "lämna rum" önerisi
+        var smallKey = aIsBigger ? (b.gameId + '_' + b.team) : (a.gameId + '_' + a.team);
+        var bigKey   = aIsBigger ? (a.gameId + '_' + a.team) : (b.gameId + '_' + b.team);
+        conflictKeys.add(smallKey);
+        lamnaKeys.add(smallKey);
+        // Büyük takıma da uyarı — ama kırmızı değil, sarı
+        conflictKeys.add(bigKey);
       }
     }
   }
 
-  // Tüm select'leri sıfırla, sonra çakışanları kırmızı yap
+  // Tüm select'leri sıfırla, sonra çakışanları renklendir
   games.forEach(function(g) {
     ['home', 'away'].forEach(function(team) {
+      var key    = g.gameId + '_' + team;
       var roomEl = document.getElementById('nasta_' + team + '_' + g.gameId);
       var inEl   = document.getElementById('nasta_' + team + '_in_' + g.gameId);
       var outEl  = document.getElementById('nasta_' + team + '_out_' + g.gameId);
-      var isConflict = conflictKeys.has(g.gameId + '_' + team);
-      var border = isConflict ? '2px solid #f55' : '1px solid var(--border)';
+      var msgEl  = document.getElementById('nasta_msg_' + team + '_' + g.gameId);
+
+      var isConflict    = conflictKeys.has(key);
+      var isLamna       = lamnaKeys.has(key);
+      var isUnresolvable= unresolvable.has(key);
+
+      var border = '1px solid var(--border)';
+      if (isUnresolvable) border = '2px solid #f55';         // Kırmızı — çözüm yok
+      else if (isLamna)   border = '2px solid #f90';         // Turuncu — lämna rum önerisi
+      else if (isConflict) border = '2px solid #fc0';        // Sarı — büyük takım, küçük taraf çakışıyor uyarı
+
       if (roomEl) { roomEl.style.border = border; roomEl.style.background = 'var(--surface2)'; }
       if (inEl)   { inEl.style.border   = border; inEl.style.background   = 'var(--surface2)'; }
       if (outEl)  { outEl.style.border  = border; outEl.style.background  = 'var(--surface2)'; }
+
+      // "lämna rum" checkbox'ını otomatik öneri olarak işaretle
+      if (msgEl && isLamna && !msgEl.checked) {
+        msgEl.indeterminate = true; // Öneri — kullanıcı onaylamadı henüz
+        msgEl.title = 'Förslag: lämna rum — stor match prioriteras';
+      } else if (msgEl && !isLamna) {
+        msgEl.indeterminate = false;
+        msgEl.title = '';
+      }
     });
   });
 }
