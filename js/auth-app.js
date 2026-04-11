@@ -176,11 +176,14 @@ function setError(msg) {
 }
 
 function checkNotificationEmail(u) {
-  // Sadece oyuncu olmayanlar için kontrol et
-  if (!u || u.notification_email) return;
-  // Daha önce bu oturumda sorulduysa tekrar sorma
-  if (sessionStorage.getItem('emailChecked')) return;
-  sessionStorage.setItem('emailChecked', '1');
+  // Oyuncu rolüne sorma
+  if (!u || u.role === 'oyuncu') return;
+  // Email zaten varsa sorma
+  if (u.notification_email) return;
+  // Bu kullanıcıya bu oturumda zaten sorulduysa sorma
+  const key = 'emailChecked_' + u.id;
+  if (sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key, '1');
 
   // Modal göster
   const modal = document.getElementById('emailReminderModal');
