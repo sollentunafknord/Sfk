@@ -144,16 +144,17 @@ function buildUsersTable(users) {
   const roleLabel = {admin:'Admin', antrenor:'Tränare', klubbledare:'Klubbledare', oyuncu:'Spelare'};
   return `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Användarnamn</th><th>Namn</th><th>Roll</th><th>Spelare</th><th>Åtgärder</th>
+      <th>Användarnamn</th><th>Namn</th><th>Roll</th><th>Spelare</th><th>E-post</th><th>Åtgärder</th>
     </tr></thead>
     <tbody>${users.map(u => `<tr id="urow_${u.id}">
       <td><strong>${u.username}</strong></td>
       <td>${u.full_name || '—'}</td>
       <td><span class="role-badge role-${u.role}">${roleLabel[u.role]||u.role}</span></td>
       <td>${u.player_id ? (window.SFK_PLAYERS?.[u.player_id]?.name || u.player_id) : '—'}</td>
+      <td style="font-size:0.8rem;color:var(--muted);">${u.notification_email || '—'}</td>
       <td>
         <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-          <button onclick="showEditUser(${u.id},'${u.username}','${(u.full_name||'').replace(/'/g,String.fromCharCode(92)+"'")}','${u.role}',${u.player_id||'null'},${u.minfotboll_member_id||'null'})"
+          <button onclick="showEditUser(${u.id},'${u.username}','${(u.full_name||'').replace(/'/g,String.fromCharCode(92)+"'")}','${u.role}',${u.player_id||'null'},${u.minfotboll_member_id||'null'},'${u.notification_email||''}')"
             style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.25rem 0.6rem;border-radius:4px;cursor:pointer;font-size:0.8rem;">
             ✏️ Redigera
           </button>
@@ -200,13 +201,15 @@ function toggleEditPlayerSelect() {
   if (teamWrap) teamWrap.style.display = role === 'antrenor' ? 'block' : 'none';
 }
 
-async function showEditUser(id, username, fullname, role, playerId, memberId) {
+async function showEditUser(id, username, fullname, role, playerId, memberId, notifEmail) {
   _editUserId = id;
   document.getElementById('editUsername').value = username;
   document.getElementById('editFullname').value = fullname;
   document.getElementById('editRole').value = role;
   document.getElementById('editPlayerId').value = playerId || '';
   document.getElementById('editMemberId').value = memberId || '';
+  const notifEl = document.getElementById('editNotificationEmail');
+  if (notifEl) notifEl.value = notifEmail || '';
   toggleEditPlayerSelect();
   document.getElementById('editUserPanel').style.display = 'block';
   document.getElementById('changePassPanel').style.display = 'none';
@@ -284,11 +287,12 @@ async function saveEditUser() {
   const role = document.getElementById('editRole').value;
   const player_id = role === 'oyuncu' ? parseInt(document.getElementById('editPlayerId').value) || null : null;
   const minfotboll_member_id = parseInt(document.getElementById('editMemberId').value) || null;
+  const notification_email = document.getElementById('editNotificationEmail')?.value.trim() || null;
   if (!username) { alert('Användarnamn krävs'); return; }
   try {
     const r = await fetch('/api/auth?action=edituser', {
       method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({id: _editUserId, username, full_name, role, player_id, minfotboll_member_id, avatar_url: window._editAvatarUrl || undefined})
+      body: JSON.stringify({id: _editUserId, username, full_name, role, player_id, minfotboll_member_id, notification_email, avatar_url: window._editAvatarUrl || undefined})
     });
     const d = await r.json();
     if (!r.ok) { alert(d.error); return; }
