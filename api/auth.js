@@ -180,7 +180,7 @@ module.exports = async (req, res) => {
         }
       } catch(e) {}
     }
-    return res.status(200).json({ token, user: { id: user.id, username: user.username, role: user.role, full_name: user.full_name, player_id: user.player_id, avatar_url: avatarUrl, minfotboll_member_id: user.minfotboll_member_id || null } });
+    return res.status(200).json({ token, user: { id: user.id, username: user.username, role: user.role, full_name: user.full_name, player_id: user.player_id, avatar_url: avatarUrl, minfotboll_member_id: user.minfotboll_member_id || null, notification_email: user.notification_email || null } });
   }
 
   // Token doğrula
@@ -191,10 +191,10 @@ module.exports = async (req, res) => {
     if (!payload) return res.status(401).json({ error: 'Geçersiz token' });
     // DB'den güncel bilgileri çek (avatar_url dahil)
     try {
-      const users = await supabaseGet(`/users?id=eq.${payload.id}&select=id,username,role,full_name,player_id,avatar_url,minfotboll_member_id`);
+      const users = await supabaseGet(`/users?id=eq.${payload.id}&select=id,username,role,full_name,player_id,avatar_url,minfotboll_member_id,notification_email`);
       if (Array.isArray(users) && users.length > 0) {
         const u = users[0];
-        return res.status(200).json({ user: { ...payload, avatar_url: u.avatar_url, minfotboll_member_id: u.minfotboll_member_id } });
+        return res.status(200).json({ user: { ...payload, avatar_url: u.avatar_url, minfotboll_member_id: u.minfotboll_member_id, notification_email: u.notification_email || null } });
       }
     } catch(e) {}
     return res.status(200).json({ user: payload });
@@ -347,6 +347,19 @@ module.exports = async (req, res) => {
     // Yeni şifreyi kaydet
     const newHash = hashPassword(newPassword);
     await supabaseRequest('PATCH', `/users?id=eq.${payload.id}`, { password_hash: newHash });
+    return res.status(200).json({ success: true });
+  }
+
+  // Bildirim emailini güncelle (tüm roller)
+  if (action === 'updateemail' && req.method === 'POST') {
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    const payload = verifyToken(token);
+    if (!payload) return res.status(401).json({ error: 'Vänligen logga in' });
+    const { notification_email } = req.body || {};
+    // Email boş bırakılabilir (geç butonu için)
+    await supabaseRequest('PATCH', `/users?id=eq.${payload.id}`, { 
+      notification_email: notification_email || null 
+    });
     return res.status(200).json({ success: true });
   }
 
