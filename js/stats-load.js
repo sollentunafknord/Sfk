@@ -41,7 +41,7 @@ async function loadActiveTeamDropdown() {
 }
 
 // ===================== FETCH MATCHES =====================
-// → matches.js
+
 async function loadStats() {
   setStatus('Laddar statistik...');
   try {
@@ -118,6 +118,7 @@ function sortStatsTable(col) {
 }
 
 // Lig listesini DB'den çek ve dropdown'u doldur
+
 async function loadStatsTeamDropdown() {
   const select = document.getElementById('statsTeam');
   if (!select) return;
@@ -260,7 +261,75 @@ function getSelectedLeagues() {
   return [...document.querySelectorAll('.league-filter:checked')].map(cb => cb.value);
 }
 
-// → stats-render.js
+function renderStatsTable(d, prefix) {
+  window._lastStatsData = d;
+  let players = [...(d.players || [])];
+  if (!players.length) return '<div class="empty-state">Ingen statistik hittades</div>';
+
+  // Oyuncu filtresi uygula
+  const selectedPlayerIds = getSelectedPlayers ? getSelectedPlayers() : [];
+  if (selectedPlayerIds.length > 0) {
+    players = players.filter(p => selectedPlayerIds.includes(p.playerId));
+  }
+  if (!players.length) return '<div class="empty-state">Ingen spelare vald</div>';
+
+  // Sırala
+  players.sort((a,b) => {
+    const av = a[statsSort.col] ?? 0;
+    const bv = b[statsSort.col] ?? 0;
+    // null/0 değerler her zaman en alta (sıralama yönünden bağımsız)
+    const aEmpty = av === 0 || av === null;
+    const bEmpty = bv === 0 || bv === null;
+    if (aEmpty && bEmpty) return a.name.localeCompare(b.name, 'sv');
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    // Değerler farklıysa: dir=-1 demek büyük üste (azalan)
+    if (bv !== av) return (bv - av) * statsSort.dir * -1;
+    return a.name.localeCompare(b.name, 'sv');
+  });
+
+  const g = (n, cls='') => n > 0 ? `<span class="badge ${cls}">${n}</span>` : `<span class="badge badge-zero">—</span>`;
+  const m = (n) => n > 0 ? `<span class="badge">${n}</span>` : `<span class="badge badge-zero">—</span>`;
+
+  const rows = players.map(p => `<tr>
+      <td><span class="shirt-no">#${p.shirt}</span></td>
+      <td class="player-name">${p.name}</td>
+      <td>${m(p.minutesPlayed || 0)}</td>
+      <td>${g(p.games)}</td>
+      <td>${g(p.starterGames || 0)}</td>
+      <td>${g(p.goals,'badge-green')}</td>
+      <td>${g(p.assists)}</td>
+      <td>${g(p.yellowCards,'badge-yellow')}</td>
+      <td>${g(p.redCards,'badge-red')}</td>
+      <td>${g(p.goalsPerGame || 0)}</td>
+      <td>${p.minutesPerGoal ? `<span class="badge">${p.minutesPerGoal}'</span>` : '<span class="badge badge-zero">—</span>'}</td>
+      <td>${p.minutesPerGame > 0 ? `<span class="badge" style="background:rgba(0,212,255,0.1);color:var(--accent)">${p.minutesPerGame}'</span>` : '<span class="badge badge-zero">—</span>'}</td>
+    </tr>`).join('');
+
+  const thStyle = `cursor:pointer;user-select:none;`;
+  const th = (col, label, style='') => `<th class="stats-th" data-col="${col}" onclick="sortStatsTable('${col}')" style="${thStyle}${style}" title="Sortera efter ${label}">${label} ${statsSort.col===col ? (statsSort.dir===-1?'↓':'↑') : '↕'}</th>`;
+
+  return `<div style="margin-bottom:0.75rem;color:var(--muted);font-size:0.85rem;">${d.totalGames || 0} matcher sparade</div>
+  <div class="table-wrap" id="statsTableWrap"><table>
+    <thead><tr>
+      <th>#</th><th>Spelare</th>
+      ${th('minutesPlayed','Tot Min')}
+      ${th('games','Trupp')}
+      ${th('starterGames','Start 11')}
+      ${th('goals','Mål','color:var(--green)')}
+      ${th('assists','Ast','color:var(--accent)')}
+      ${th('yellowCards','Gult','color:var(--yellow)')}
+      ${th('redCards','Rött','color:var(--red)')}
+      ${th('goalsPerGame','Mål/Match')}
+      ${th('minutesPerGoal','Min/Mål')}
+      ${th('minutesPerGame','Min/Match')}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ===================== OYUNCU =====================
+
 async function loadMyStats() {
   try {
     const r = await fetch('/api/stats?action=mystats', {headers: authHeaders()});
@@ -345,7 +414,8 @@ async function addUser() {
   } catch(e) { alert('Fel: ' + e.message); }
 }
 
-
+// SFK roster cache
+let _sfkRoster = null;
 
 async function loadOyuncuLeagueFilters() {
   try {
@@ -1882,6 +1952,7 @@ const GITHUB_OWNER = 'cyesil';
 const GITHUB_REPO = 'Sollentuna-FK';
 const GITHUB_BRANCH = 'main';
 
+
 function initMultiDropdown(btnId, listId) {
   const btn = document.getElementById(btnId);
   const list = document.getElementById(listId);
@@ -1905,6 +1976,3 @@ document.addEventListener('DOMContentLoaded', () => {
   initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
   initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
 });
-</script>
-</body>
-</html
