@@ -153,6 +153,13 @@ module.exports = async (req, res) => {
   const isManual = req.query.manual === '1';
   res.setHeader('Content-Type', 'application/json');
 
+  // Güvenlik — sadece GitHub Actions veya manuel test
+  const cronSecret = req.headers['x-cron-secret'] || '';
+  const expectedSecret = process.env.CRON_SECRET || '';
+  if (!isManual && expectedSecret && cronSecret !== expectedSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     const { from, to } = getDateRange();
 
