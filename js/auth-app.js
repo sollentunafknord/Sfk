@@ -191,7 +191,8 @@ async function saveNotificationEmail() {
   const msg = document.getElementById('notificationEmailMsg');
   const email = input ? input.value.trim() : '';
 
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && !emailRegex.test(email)) {
     msg.style.color = 'var(--red)';
     msg.textContent = 'Ogiltig e-postadress';
     return;
