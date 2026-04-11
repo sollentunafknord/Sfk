@@ -113,7 +113,9 @@ function showApp() {
     }
   }
   if (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') {
-    loadLeagueFilters();
+    loadLeagueFilters().then(() => {
+      initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
+    });
     initPlayerFilter();
     loadActiveTeamDropdown();
   }
