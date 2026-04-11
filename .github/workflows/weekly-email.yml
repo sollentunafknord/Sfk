@@ -1,0 +1,25 @@
+name: Perşembe Omklädningsrum Maili
+
+on:
+  schedule:
+    # Her Perşembe 07:00 UTC (09:00 İsveç saati)
+    - cron: '0 7 * * 4'
+  workflow_dispatch: # Manuel tetikleme için
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Omklädningsrum mailini gönder
+        run: |
+          curl -s "https://sollentuna-fk.vercel.app/api/cron-email" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -o response.json
+          cat response.json
+          # Başarılı mı kontrol et
+          if grep -q '"ok":true' response.json; then
+            echo "✅ Mail başarıyla gönderildi!"
+          else
+            echo "❌ Mail gönderilemedi!"
+            exit 1
+          fi
