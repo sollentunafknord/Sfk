@@ -547,3 +547,105 @@ async function saveActiveTeams() {
   }
 }
 
+
+
+// ===================== AYARLAR =====================
+
+function toggleInstellningar() {
+  const panel = document.getElementById('instellningarPanel');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    document.getElementById('settCurrentPass').value = '';
+    document.getElementById('settNewPass').value = '';
+    document.getElementById('settConfirmPass').value = '';
+    document.getElementById('settPassMsg').textContent = '';
+  }
+  // Dışarı tıklayınca kapat
+  if (!isOpen) {
+    setTimeout(() => {
+      document.addEventListener('click', function closePanel(e) {
+        if (!panel.contains(e.target) && !e.target.closest('[onclick*="toggleInstellningar"]')) {
+          panel.style.display = 'none';
+          document.removeEventListener('click', closePanel);
+        }
+      });
+    }, 100);
+  }
+}
+
+async function saveSettPassword() {
+  const current = document.getElementById('settCurrentPass').value;
+  const newPass = document.getElementById('settNewPass').value;
+  const confirm = document.getElementById('settConfirmPass').value;
+  const msg = document.getElementById('settPassMsg');
+  if (!current || !newPass || !confirm) { msg.style.color='var(--red)'; msg.textContent='Fyll i alla fält.'; return; }
+  if (newPass !== confirm) { msg.style.color='var(--red)'; msg.textContent='Lösenorden matchar inte.'; return; }
+  if (newPass.length < 6) { msg.style.color='var(--red)'; msg.textContent='Minst 6 tecken krävs.'; return; }
+  try {
+    const r = await fetch('/api/auth?action=changeownpassword', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ currentPassword: current, newPassword: newPass })
+    });
+    const d = await r.json();
+    if (!r.ok) { msg.style.color='var(--red)'; msg.textContent=d.error||'Fel uppstod.'; }
+    else { msg.style.color='var(--green)'; msg.textContent='✓ Lösenordet har ändrats!'; setTimeout(()=>document.getElementById('instellningarPanel').style.display='none',2000); }
+  } catch(e) { msg.style.color='var(--red)'; msg.textContent='Fel: '+e.message; }
+}
+
+function showChangeOwnPassword() {
+  const panel = document.getElementById('changeOwnPassPanel');
+  if (panel) {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('ownCurrentPass').value = '';
+    document.getElementById('ownNewPass').value = '';
+    document.getElementById('ownConfirmPass').value = '';
+    document.getElementById('ownPassMsg').textContent = '';
+  }
+}
+
+async function saveOwnPassword() {
+  const current = document.getElementById('ownCurrentPass').value;
+  const newPass = document.getElementById('ownNewPass').value;
+  const confirm = document.getElementById('ownConfirmPass').value;
+  const msg = document.getElementById('ownPassMsg');
+
+  if (!current || !newPass || !confirm) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Fyll i alla fält.';
+    return;
+  }
+  if (newPass !== confirm) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Lösenorden matchar inte.';
+    return;
+  }
+  if (newPass.length < 6) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Lösenordet måste vara minst 6 tecken.';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/auth?action=changeownpassword', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ currentPassword: current, newPassword: newPass })
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      msg.style.color = 'var(--red)';
+      msg.textContent = d.error || 'Fel uppstod.';
+    } else {
+      msg.style.color = 'var(--green)';
+      msg.textContent = '✓ Lösenordet har ändrats!';
+      setTimeout(() => {
+        document.getElementById('changeOwnPassPanel').style.display = 'none';
+      }, 2000);
+    }
+  } catch(e) {
+    msg.style.color = 'var(--red)';
+    msg.textContent = 'Fel: ' + e.message;
+  }
+}
