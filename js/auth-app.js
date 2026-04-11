@@ -24,7 +24,6 @@ async function doLogin() {
   } catch(e) {
     document.getElementById('loginErr').textContent = 'Anslutningsfel';
   }
-}
 
 function doLogout() {
   state.token = null; state.user = null;
@@ -173,6 +172,7 @@ function setError(msg) {
   const b = document.getElementById('errorBox');
   b.textContent = msg || '';
   b.style.display = msg ? 'block' : 'none';
+}
 
 function checkNotificationEmail(u) {
   // Sadece oyuncu olmayanlar için kontrol et
