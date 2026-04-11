@@ -24,6 +24,7 @@ async function doLogin() {
   } catch(e) {
     document.getElementById('loginErr').textContent = 'Anslutningsfel';
   }
+}
 
 function doLogout() {
   state.token = null; state.user = null;
