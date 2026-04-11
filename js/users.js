@@ -3,6 +3,7 @@
 // Bağımlılıklar: authHeaders(), state, setStatus(), setError() (auth-app.js'de tanımlı)
 // =============================================================================
 
+
 async function loadSfkRoster() {
   if (_sfkRoster) return _sfkRoster;
   try {
@@ -354,10 +355,74 @@ async function deleteUser(id, username) {
 }
 
 // ===================== OYUNCU FONKSİYONLARI =====================
-// → stats-render.js
-function oyuncuTab(tab) {
+function renderMyStats(d) {
+  if (!d || d.error) return '<div class="empty-state">Ingen statistik hittades</div>';
+  const g = (n,cls='') => n > 0 ? `<span class="badge ${cls}">${n}</span>` : `<span class="badge badge-zero">—</span>`;
+  return `
+    <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      ${d.thumbnail ? `<img src="${d.thumbnail}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);" onerror="this.style.display='none'">` : 
+        `<div style="width:80px;height:80px;border-radius:50%;background:var(--surface2);border:3px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem;">👤</div>`}
+      <div style="flex:1;">
+        <div style="font-size:1.4rem;font-weight:700;font-family:'Barlow Condensed',sans-serif;">${d.name}</div>
+        <div style="color:var(--muted);font-size:0.9rem;">#${d.shirt} · Spelare</div>
+      </div>
+      <button onclick="showChangeOwnPassword()" style="background:var(--surface2);border:1px solid var(--border);color:var(--accent);padding:0.4rem 0.9rem;border-radius:6px;cursor:pointer;font-size:0.85rem;">🔑 Byt lösenord</button>
+    </div>
+    <div id="changeOwnPassPanel" style="display:none;background:var(--surface2);border:1px solid var(--accent);border-radius:10px;padding:1rem;margin-bottom:1.5rem;">
+      <div style="font-weight:700;margin-bottom:0.75rem;">🔑 Byt lösenord</div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:end;">
+        <div>
+          <label style="font-size:0.75rem;color:var(--muted);">Nuvarande lösenord</label>
+          <input type="password" id="ownCurrentPass" placeholder="Nuvarande lösenord"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.9rem;width:200px;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;color:var(--muted);">Nytt lösenord</label>
+          <input type="password" id="ownNewPass" placeholder="Nytt lösenord"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.9rem;width:200px;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem;color:var(--muted);">Bekräfta lösenord</label>
+          <input type="password" id="ownConfirmPass" placeholder="Bekräfta lösenord"
+            style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.9rem;width:200px;">
+        </div>
+        <button onclick="saveOwnPassword()" class="btn btn-success">💾 Spara</button>
+        <button onclick="document.getElementById('changeOwnPassPanel').style.display='none'" class="btn btn-secondary">✕</button>
+      </div>
+      <div id="ownPassMsg" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem;margin-bottom:1.5rem;">
+      <div class="stat-card"><div class="stat-val">${d.games||0}</div><div class="stat-lbl">Trupp</div></div>
+      <div class="stat-card"><div class="stat-val">${d.starterGames||0}</div><div class="stat-lbl">Start 11</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${d.minutesPlayed||0}'</div><div class="stat-lbl">Tot Min</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--green)">${d.goals||0}</div><div class="stat-lbl">Mål</div></div>
+      <div class="stat-card"><div class="stat-val">${d.assists||0}</div><div class="stat-lbl">Assist</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--yellow)">${d.yellowCards||0}</div><div class="stat-lbl">Gult</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--red)">${d.redCards||0}</div><div class="stat-lbl">Rött</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--muted)">${d.minutesPlayed > 0 && d.games > 0 ? Math.round(d.minutesPlayed/d.games)+"'" : '—'}</div><div class="stat-lbl">Min/Match</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--muted)">${d.goals > 0 ? (Math.round(d.goals/d.games*100)/100) : '—'}</div><div class="stat-lbl">Mål/Match</div></div>
+      <div class="stat-card"><div class="stat-val" style="color:var(--muted)">${d.goals > 0 && d.minutesPlayed > 0 ? Math.round(d.minutesPlayed/d.goals)+"'" : '—'}</div><div class="stat-lbl">Min/Mål</div></div>
+    </div>
+    ${d.matchDetails && d.matchDetails.length > 0 ? `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Datum</th><th>Match</th><th>Resultat</th><th>Min</th><th style="color:var(--green)">Mål</th><th style="color:var(--accent)">Ast</th><th style="color:var(--yellow)">🟨</th><th style="color:var(--red)">🟥</th></tr></thead>
+      <tbody>${d.matchDetails.map(m => {
+        const date = new Date(m.gameDate).toLocaleDateString('sv-SE',{day:'2-digit',month:'short'});
+        return `<tr>
+          <td style="color:var(--muted);font-size:0.82rem;">${date}</td>
+          <td class="player-name" style="font-size:0.85rem;">${m.homeTeam} vs ${m.awayTeam}</td>
+          <td style="font-weight:700;">${m.homeScore}-${m.awayScore}</td>
+          <td>${m.minutesPlayed > 0 ? `<span class="badge">${m.minutesPlayed}'</span>` : '<span class="badge badge-zero">—</span>'}</td>
+          <td>${m.goals > 0 ? `<span class="badge badge-green">${m.goals}</span>` : '—'}</td>
+          <td>${m.assists > 0 ? `<span class="badge">${m.assists}</span>` : '—'}</td>
+          <td>${m.yellowCards > 0 ? `<span class="badge badge-yellow">${m.yellowCards}</span>` : '—'}</td>
+          <td>${m.redCards > 0 ? `<span class="badge badge-red">${m.redCards}</span>` : '—'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>` : '<div class="empty-state">Inga matcher hittades</div>'}
+  `;
+}
 
-// ===================== AKTİF TAKIMLAR =====================
 async function loadActiveTeams() {
   const el = document.getElementById('activeTeamsList');
   if (!el) return;
@@ -437,3 +502,48 @@ async function saveActiveTeams() {
   }
 }
 // ==========================================================
+
+function onActiveTeamChange(teamId, isActive) {
+  // Sadece kart border'ını güncelle — kayıt Spara butonuyla olur
+  var card = document.getElementById('ateam_' + teamId);
+  if (card) card.style.borderColor = isActive ? 'var(--accent)' : 'var(--border)';
+}
+
+async function saveActiveTeams() {
+  const btn = document.getElementById('saveActiveTeamsBtn');
+  const msg = document.getElementById('saveActiveTeamsMsg');
+  btn.disabled = true;
+  msg.style.color = 'var(--muted)';
+  msg.textContent = 'Sparar...';
+
+  // Tüm checkbox'ları oku
+  var checkboxes = document.querySelectorAll('[id^="atoggle_"]');
+  var updates = [];
+  checkboxes.forEach(function(cb) {
+    var teamId = parseInt(cb.id.replace('atoggle_', ''));
+    updates.push({team_id: teamId, is_active: cb.checked});
+  });
+
+  try {
+    // Her takımı güncelle
+    var errors = 0;
+    await Promise.all(updates.map(async function(u) {
+      const r = await fetch('/api/admin?action=setactiveteam', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+        body: JSON.stringify(u)
+      });
+      const d = await r.json();
+      if (!d.ok) errors++;
+    }));
+    msg.style.color = errors ? '#f55' : '#4caf50';
+    msg.textContent = errors ? errors + ' hata oluştu' : '✅ Kaydedildi!';
+    setTimeout(function(){ msg.textContent = ''; }, 3000);
+  } catch(e) {
+    msg.style.color = '#f55';
+    msg.textContent = 'Hata: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
