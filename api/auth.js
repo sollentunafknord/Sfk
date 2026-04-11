@@ -237,7 +237,7 @@ module.exports = async (req, res) => {
     const payload = verifyToken(token);
     if (!payload || (payload.role !== 'admin' && payload.role !== 'antrenor' && payload.role !== 'klubbledare')) return res.status(403).json({ error: 'Behörighet saknas' });
 
-    const users = await supabaseRequest('GET', '/users?select=id,username,role,full_name,player_id,avatar_url,minfotboll_member_id,created_at');
+    const users = await supabaseRequest('GET', '/users?select=id,username,role,full_name,player_id,avatar_url,minfotboll_member_id,notification_email,created_at');
     // Tränare sadece spelare rolündeki kullanıcıları görür
     if (payload.role === 'antrenor') {
       return res.status(200).json(Array.isArray(users) ? users.filter(u => u.role === 'oyuncu') : users);
@@ -261,7 +261,7 @@ module.exports = async (req, res) => {
     const token = (req.headers.authorization || '').replace('Bearer ', '');
     const payload = verifyToken(token);
     if (!payload || (payload.role !== 'admin' && payload.role !== 'antrenor' && payload.role !== 'klubbledare')) return res.status(403).json({ error: 'Behörighet saknas' });
-    const { id, username, full_name, role, player_id, minfotboll_member_id, avatar_url: providedAvatar } = req.body || {};
+    const { id, username, full_name, role, player_id, minfotboll_member_id, avatar_url: providedAvatar, notification_email } = req.body || {};
     if (!id || !username) return res.status(400).json({ error: 'Information saknas' });
     // Frontend'den avatar_url gönderildiyse direkt kullan, yoksa MemberID'den çek
     let avatar_url = providedAvatar || null;
@@ -293,6 +293,7 @@ module.exports = async (req, res) => {
       username, full_name, role,
       player_id: player_id || null,
       minfotboll_member_id: minfotboll_member_id || null,
+      notification_email: notification_email !== undefined ? (notification_email || null) : undefined,
       ...(avatar_url ? { avatar_url } : {}),
     });
     return res.status(200).json({ success: true, avatar_url });
