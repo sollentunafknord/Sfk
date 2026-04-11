@@ -621,6 +621,10 @@
 <script src="/js/auth-app.js"></script>
 <script src="/js/matches.js"></script>
 <script src="/js/stats-load.js"></script>
+<script src="/js/omkladningsrum.js"></script>
+<script src="/js/stats-render.js"></script>
+<script src="/js/cv.js"></script>
+<script src="/js/deploy.js"></script>
 <script>
 // ===================== STATE =====================
 const state = {
@@ -827,261 +831,16 @@ function oyuncuTab(tab) {
   if (tab === 'cv') loadOyuncuCv();
 }
 
-async function loadOyuncuLeagueFilters() {
-  try {
-    const r = await fetch('/api/admin?action=savedmatches', {headers: authHeaders()});
-    const matches = await r.json();
-    if (!Array.isArray(matches)) return;
-    const leagues = [...new Set(matches.map(m => m.league_name).filter(Boolean))].sort();
-    const el = document.getElementById('oyuncuLeagueFilterItems');
-    if (!el) return;
-    if (el.children.length > 0) return;
-    el.innerHTML = leagues.map(l =>
-      `<label><input type="checkbox" class="oyuncu-league-filter" value="${l}" checked> ${l}</label>`
-    ).join('');
-    el.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
-      const all = el.querySelectorAll('input');
-      const checked = el.querySelectorAll('input:checked');
-      const span = document.querySelector('#oyuncuLeagueBtn span');
-      if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
-    }));
-    // Dropdown'u aç/kapat
-    const btn = document.getElementById('oyuncuLeagueBtn');
-    const list = document.getElementById('oyuncuLeagueList');
-    if (btn && list && !btn._initialized) {
-      btn._initialized = true;
-      btn.addEventListener('click', (e) => { e.stopPropagation(); list.classList.toggle('open'); });
-      document.addEventListener('click', () => list.classList.remove('open'));
-      list.addEventListener('click', (e) => e.stopPropagation());
-    }
-  } catch(e) { console.error('loadOyuncuLeagueFilters error:', e); }
-}
-
-// ===================== OMKLÄDNINGSRUM =====================
-const SFK_ARENAS = {
-  21808: 'Norrvikens IP 1',
-  21815: 'Norrvikens IP 2 Hall',
-  20977: 'Sollentuna Fotbollshall 1',
-  20976: 'Sollentuna Fotbollshall',
-  20586: 'Edsbergs Sportfält',
-  20588: 'Edsbergs Sportfält 2',
-  20591: 'Edsbergs Sportfält 3',
-};
-
-
-</script>
-<script src="/js/omkladningsrum.js"></script>
-<script>
-// ===================== GITHUB DEPLOY =====================
-const GITHUB_TOKEN = localStorage.getItem('sfk_gh_token') || '';
-const GITHUB_OWNER = 'cyesil';
-const GITHUB_REPO = 'Sollentuna-FK';
-const GITHUB_BRANCH = 'main';
-
-function toggleGithubPanel() {
-  const panel = document.getElementById('githubPanel');
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) {
-    document.getElementById('deployMsg').textContent = '';
-    const savedToken = localStorage.getItem('sfk_gh_token') || '';
-    const tokenInput = document.getElementById('ghTokenInput');
-    if (tokenInput) tokenInput.value = savedToken;
-    const statusEl = document.getElementById('ghTokenStatus');
-    if (statusEl) statusEl.textContent = savedToken ? '✓ Token kaydedildi' : '⚠️ Token gerekli';
-    if (statusEl) statusEl.style.color = savedToken ? 'var(--green)' : 'var(--yellow)';
-    // Dışarı tıklayınca kapat
-    setTimeout(() => {
-      document.addEventListener('click', function closePanel(e) {
-        if (!panel.contains(e.target) && !e.target.closest('#githubPushBtn')) {
-          panel.style.display = 'none';
-          document.removeEventListener('click', closePanel);
-        }
-      });
-    }, 100);
-  }
-}
-
-async function githubGetSha(filePath) {
-  try {
-    const r = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${GITHUB_BRANCH}`, {
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    return d.sha || null;
-  } catch(e) { return null; }
-}
-
-async function githubPushFile(filePath, content) {
-  const b64 = btoa(unescape(encodeURIComponent(content)));
-  const sha = await githubGetSha(filePath);
-  const body = { message: `Update ${filePath}`, content: b64, branch: GITHUB_BRANCH };
-  if (sha) body.sha = sha;
-  const r = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `token ${GITHUB_TOKEN}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-  if (!r.ok) {
-    const err = await r.json();
-    throw new Error(err.message || r.status);
-  }
-  return true;
-}
-
-async function fetchFileContent(apiPath) {
-  const r = await fetch(apiPath, { headers: authHeaders() });
-  return await r.text();
-}
-
-async function doDeploy() {
-  const btn = document.getElementById('deployRunBtn');
-  const msg = document.getElementById('deployMsg');
-  btn.disabled = true;
-  btn.textContent = '⏳ Pushar...';
-  msg.style.color = 'var(--muted)';
-  msg.textContent = '';
-
-  const currentToken = localStorage.getItem('sfk_gh_token') || '';
-  if (!currentToken || !currentToken.startsWith('ghp_')) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = '⚠️ Ange ett giltigt GitHub Token först!';
-    btn.disabled = false;
-    btn.textContent = '🚀 Push index.html → GitHub';
-    return;
-  }
-  try {
-    msg.style.color = 'var(--muted)';
-    msg.textContent = 'Hämtar senaste SHA...';
-    const fileContent = document.documentElement.outerHTML;
-    msg.textContent = 'Pushar index.html...';
-    await githubPushFile('index.html', fileContent);
-    msg.style.color = 'var(--green)';
-    msg.textContent = '✓ index.html pushat! Vercel deployas om ~30 sek.';
-    btn.textContent = '✓ Klart!';
-    setTimeout(() => {
-      document.getElementById('githubPanel').style.display = 'none';
-      btn.textContent = '🚀 Push index.html → GitHub';
-    }, 3000);
-  } catch(e) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = '✗ Fel: ' + e.message;
-    btn.textContent = '🚀 Push index.html → GitHub';
-  }
-}
-
-function toggleInstellningar() {
-  const panel = document.getElementById('instellningarPanel');
-  if (!panel) return;
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) {
-    document.getElementById('settCurrentPass').value = '';
-    document.getElementById('settNewPass').value = '';
-    document.getElementById('settConfirmPass').value = '';
-    document.getElementById('settPassMsg').textContent = '';
-  }
-  // Dışarı tıklayınca kapat
-  if (!isOpen) {
-    setTimeout(() => {
-      document.addEventListener('click', function closePanel(e) {
-        if (!panel.contains(e.target) && !e.target.closest('[onclick*="toggleInstellningar"]')) {
-          panel.style.display = 'none';
-          document.removeEventListener('click', closePanel);
-        }
-      });
-    }, 100);
-  }
-}
-
-async function saveSettPassword() {
-  const current = document.getElementById('settCurrentPass').value;
-  const newPass = document.getElementById('settNewPass').value;
-  const confirm = document.getElementById('settConfirmPass').value;
-  const msg = document.getElementById('settPassMsg');
-  if (!current || !newPass || !confirm) { msg.style.color='var(--red)'; msg.textContent='Fyll i alla fält.'; return; }
-  if (newPass !== confirm) { msg.style.color='var(--red)'; msg.textContent='Lösenorden matchar inte.'; return; }
-  if (newPass.length < 6) { msg.style.color='var(--red)'; msg.textContent='Minst 6 tecken krävs.'; return; }
-  try {
-    const r = await fetch('/api/auth?action=changeownpassword', {
-      method: 'POST', headers: authHeaders(),
-      body: JSON.stringify({ currentPassword: current, newPassword: newPass })
-    });
-    const d = await r.json();
-    if (!r.ok) { msg.style.color='var(--red)'; msg.textContent=d.error||'Fel uppstod.'; }
-    else { msg.style.color='var(--green)'; msg.textContent='✓ Lösenordet har ändrats!'; setTimeout(()=>document.getElementById('instellningarPanel').style.display='none',2000); }
-  } catch(e) { msg.style.color='var(--red)'; msg.textContent='Fel: '+e.message; }
-}
-
-function showChangeOwnPassword() {
-  const panel = document.getElementById('changeOwnPassPanel');
-  if (panel) {
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    document.getElementById('ownCurrentPass').value = '';
-    document.getElementById('ownNewPass').value = '';
-    document.getElementById('ownConfirmPass').value = '';
-    document.getElementById('ownPassMsg').textContent = '';
-  }
-}
-
-async function saveOwnPassword() {
-  const current = document.getElementById('ownCurrentPass').value;
-  const newPass = document.getElementById('ownNewPass').value;
-  const confirm = document.getElementById('ownConfirmPass').value;
-  const msg = document.getElementById('ownPassMsg');
-
-  if (!current || !newPass || !confirm) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = 'Fyll i alla fält.';
-    return;
-  }
-  if (newPass !== confirm) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = 'Lösenorden matchar inte.';
-    return;
-  }
-  if (newPass.length < 6) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = 'Lösenordet måste vara minst 6 tecken.';
-    return;
-  }
-
-  try {
-    const r = await fetch('/api/auth?action=changeownpassword', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ currentPassword: current, newPassword: newPass })
-    });
-    const d = await r.json();
-    if (!r.ok) {
-      msg.style.color = 'var(--red)';
-      msg.textContent = d.error || 'Fel uppstod.';
-    } else {
-      msg.style.color = 'var(--green)';
-      msg.textContent = '✓ Lösenordet har ändrats!';
-      setTimeout(() => {
-        document.getElementById('changeOwnPassPanel').style.display = 'none';
-      }, 2000);
-    }
-  } catch(e) {
-    msg.style.color = 'var(--red)';
-    msg.textContent = 'Fel: ' + e.message;
-  }
-}
-
-
-// ===================== CV FONKSİYONLARI =====================
-
-</script>
-<script src="/js/stats-render.js"></script>
-<script src="/js/cv.js"></script>
-<script>
-
+// → stats-load.js
+// → deploy.js
+// → deploy.js
+// → deploy.js
+// → deploy.js
+// → deploy.js
+// → users.js
+// → users.js
+// → users.js
+// → users.js
 // ===================== INIT =====================
 // → auth-app.js
 // Flatpickr - İsveçce takvim
@@ -1116,29 +875,6 @@ if (state.token && state.user) {
 </script>
 
 <script>
-function initMultiDropdown(btnId, listId) {
-  const btn = document.getElementById(btnId);
-  const list = document.getElementById(listId);
-  if (!btn || !list) return;
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    list.classList.toggle('open');
-  });
-  document.addEventListener('click', () => list.classList.remove('open'));
-  list.addEventListener('click', (e) => e.stopPropagation());
-  // Label güncellemesi
-  const updateLabel = () => {
-    const checkboxes = list.querySelectorAll('input[type=checkbox]');
-    const checked = [...checkboxes].filter(c => c.checked);
-    const span = btn.querySelector('span');
-    if (span) span.textContent = checked.length === checkboxes.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
-  };
-  list.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', updateLabel));
-}
-document.addEventListener('DOMContentLoaded', () => {
-  initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
-  initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
-});
 </script>
 </body>
 </html>
