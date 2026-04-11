@@ -111,6 +111,7 @@
       gap: 1rem;
       align-items: flex-end;
       flex-wrap: wrap;
+      overflow: visible;
     }
     .filter-bar label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.5px; }
     .filter-bar input, .filter-bar select {
