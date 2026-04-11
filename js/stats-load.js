@@ -450,7 +450,7 @@ function initMultiDropdown(btnId, listId) {
   const btn = document.getElementById(btnId);
   const list = document.getElementById(listId);
   if (!btn || !list) return;
-  if (btn._initialized) return; // Tekrar eklemeyi önle
+  if (btn._initialized) return;
   btn._initialized = true;
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -458,7 +458,6 @@ function initMultiDropdown(btnId, listId) {
   });
   document.addEventListener('click', () => list.classList.remove('open'));
   list.addEventListener('click', (e) => e.stopPropagation());
-  // Label güncellemesi
   const updateLabel = () => {
     const checkboxes = list.querySelectorAll('input[type=checkbox]');
     const checked = [...checkboxes].filter(c => c.checked);
