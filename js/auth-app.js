@@ -61,6 +61,16 @@ function showApp() {
             headerAvatar.style.display = 'inline-block';
           }
         }).catch(() => {});
+    } else if (u.minfotboll_member_id) {
+      // Antrenör / klubbledare için MinFotboll'dan çek
+      fetch('/api/admin?action=fetchavatar&memberId=' + u.minfotboll_member_id, {headers: authHeaders()})
+        .then(r => r.json())
+        .then(d => {
+          if (d.avatarUrl) {
+            headerAvatar.src = d.avatarUrl;
+            headerAvatar.style.display = 'inline-block';
+          }
+        }).catch(() => {});
     }
   }
   rb.className = 'role-badge role-' + u.role;
