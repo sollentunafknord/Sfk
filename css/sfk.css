@@ -363,3 +363,6 @@
 .ms-dropdown-actions { display:flex; gap:0.5rem; padding:0.4rem 0.75rem; border-bottom:1px solid var(--border); }
 .ms-dropdown-actions button { font-size:0.75rem; background:none; border:1px solid var(--border); color:var(--muted); padding:2px 8px; border-radius:4px; cursor:pointer; }
 </style>
+
+.dash-row { border-bottom:1px solid var(--border); cursor:pointer; }
+.dash-row:hover { background:var(--surface2); }

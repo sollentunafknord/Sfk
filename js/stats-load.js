@@ -572,7 +572,7 @@ async function _dashMyClub() {
 
     const rows = d.events.map((ev, idx) => {
       const dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
-      return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openMyClubDetail(' + idx + ')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">' +
+      return '<tr class="dash-row" onclick="openMyClubDetail(' + idx + ')">' +
         '<td style="padding:0.6rem 0.8rem;white-space:nowrap;">' + dateStr + '</td>' +
         '<td style="padding:0.6rem 0.8rem;font-weight:600;color:var(--accent);">' + (ev.title || '—') + '</td>' +
         '<td style="padding:0.6rem 0.8rem;color:var(--muted);font-size:0.85rem;">' + (ev.calendar_name || '—') + '</td>' +

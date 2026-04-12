@@ -121,10 +121,10 @@ function showApp() {
     if (el && !el.value) el.value = id.includes('To') ? today : '2025-01-01';
   });
 
-  if (u.role === 'admin') { loadUsers(); populatePlayerSelect(); adminTab('dashboard'); }
+  if (u.role === 'admin') { loadUsers(); populateCvPlayerSelect(); adminTab('dashboard'); }
   if (u.role === 'antrenor') {
     loadUsers();
-    populatePlayerSelect();
+    populateCvPlayerSelect();
     // Tränare sadece Spelare yaratabileceği için diğer rolleri gizle
     const newRole = document.getElementById('newRole');
     if (newRole) {
@@ -137,7 +137,7 @@ function showApp() {
   }
   if (u.role === 'klubbledare') {
     loadUsers();
-    populatePlayerSelect();
+    populateCvPlayerSelect();
     // Klubbledare sadece tränare + oyuncu oluşturabilir
     const newRole = document.getElementById('newRole');
     if (newRole) {
