@@ -268,9 +268,10 @@ async function saveMatchDoc(selected) {
   // İlk kayıtta isim sor
   if (!_matchDocData || !_matchDocData.id) {
     var docName = prompt('Ge dokumentet ett namn:', ev.title);
-    if (docName === null) return; // İptal
+    if (docName === null) return;
     if (!docName.trim()) docName = ev.title;
-    ev._docName = docName;
+    _matchDocData = _matchDocData || {};
+    _matchDocData._docName = docName;
   }
 
   var isMatch = ev.activity_type === 'Match';
@@ -278,7 +279,7 @@ async function saveMatchDoc(selected) {
 
   // Form alanlarını topla
   var fields = isMatch
-    ? ['opponent','location','meetup','formation','tactics','lineup','notes']
+    ? ['opponent','location','meetup','formation','tactics','notes']
     : ['location','meetup','focus','duration','plan','notes'];
 
   fields.forEach(function(f) {
@@ -290,7 +291,7 @@ async function saveMatchDoc(selected) {
     var body = {
       activity_id: ev.id,
       activity_type: ev.activity_type,
-      title: ev._docName || ev.title,
+      title: (_matchDocData && _matchDocData._docName) || ev.title,
       content: content,
     };
     if (_matchDocData && _matchDocData.id) body.id = _matchDocData.id;
@@ -305,20 +306,15 @@ async function saveMatchDoc(selected) {
       if (d.result && Array.isArray(d.result) && d.result[0]) {
         _matchDocData = d.result[0];
       }
-      // Kayıt zamanını güncelle
-      var timeEl = document.querySelector('#matchDocModal [style*="Senast sparad"]');
-      if (timeEl) {
-        timeEl.textContent = 'Senast sparad: ' + new Date().toLocaleDateString('sv-SE', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-      } else {
-        var footer = document.querySelector('#matchDocModal > div > div:last-child');
-        if (footer) {
-          var savedDiv = document.createElement('div');
-          savedDiv.style.cssText = 'text-align:right;margin-top:0.5rem;font-size:0.8rem;color:var(--muted);';
-          savedDiv.textContent = 'Senast sparad: ' + new Date().toLocaleDateString('sv-SE', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-          footer.after(savedDiv);
-        }
-      }
-      alert('&#x2705; Dokumentet sparades!');
+      // Kayıt zamanını güncelle — sadece bir tane olsun
+      document.querySelectorAll('.doc-saved-time').forEach(function(el) { el.remove(); });
+      var savedDiv = document.createElement('div');
+      savedDiv.className = 'doc-saved-time';
+      savedDiv.style.cssText = 'text-align:right;margin-top:0.5rem;font-size:0.8rem;color:var(--muted);';
+      savedDiv.textContent = 'Senast sparad: ' + new Date().toLocaleDateString('sv-SE', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      var modalInner = document.querySelector('#matchDocModal > div');
+      if (modalInner) modalInner.appendChild(savedDiv);
+      alert('✅ Dokumentet sparades!');
     }
   } catch(e) {
     alert('Fel: ' + e.message);
@@ -334,7 +330,7 @@ function downloadMatchDocPdf() {
 
   // Form değerlerini topla
   var fields = isMatch
-    ? ['opponent','location','meetup','formation','tactics','lineup','notes']
+    ? ['opponent','location','meetup','formation','tactics','notes']
     : ['location','meetup','focus','duration','plan','notes'];
 
   var vals = {};
