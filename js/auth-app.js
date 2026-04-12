@@ -3,6 +3,37 @@
 // Bağımlılıklar: state (index.html'de tanımlı)
 // =========================================================================
 
+// ===================== OTOMATİK LOGOUT =====================
+const IDLE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 saat
+let _idleTimer = null;
+
+function resetIdleTimer() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(() => {
+    if (state.token) {
+      doLogout();
+      // Login sayfasında uyarı göster
+      const err = document.getElementById('loginErr');
+      if (err) err.textContent = 'Du har loggats ut automatiskt efter 2 timmars inaktivitet.';
+    }
+  }, IDLE_TIMEOUT);
+}
+
+function startIdleDetection() {
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(evt => {
+    document.addEventListener(evt, resetIdleTimer, { passive: true });
+  });
+  resetIdleTimer();
+}
+
+function stopIdleDetection() {
+  clearTimeout(_idleTimer);
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(evt => {
+    document.removeEventListener(evt, resetIdleTimer);
+  });
+}
+// ===========================================================
+
 async function doLogin() {
   const username = document.getElementById('loginUser').value.trim();
   const password = document.getElementById('loginPass').value;
@@ -27,6 +58,7 @@ async function doLogin() {
 }
 
 function doLogout() {
+  stopIdleDetection();
   state.token = null; state.user = null;
   localStorage.removeItem('sfk_token');
   localStorage.removeItem('sfk_user');
@@ -162,6 +194,9 @@ function showApp() {
     if (oyuncuMatchTo) oyuncuMatchTo.value = today;
   }
   if (u.role === 'oyuncu') loadMyStats();
+
+  // Otomatik logout başlat
+  startIdleDetection();
 }
 
 function setStatus(msg, show=true) {
