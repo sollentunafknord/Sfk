@@ -503,29 +503,28 @@ async function loadDashboard() {
     const today = new Date().toISOString().slice(0, 10);
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    // Paralel çek
+    // Paralel çek — arenagames MinFotboll'dan canlı maç listesi getirir
     const [matchesRes, roomsRes, usersRes, rosterRes] = await Promise.all([
-      fetch('/api/admin?action=savedmatches', {headers: authHeaders()}),
+      fetch('/api/admin?action=arenagames&dateFrom=' + today + '&dateTo=' + nextWeek, {headers: authHeaders()}),
       fetch('/api/admin?action=getrooms', {headers: authHeaders()}),
       fetch('/api/auth?action=users', {headers: authHeaders()}),
       fetch('/api/admin?action=activeroster', {headers: authHeaders()}),
     ]);
 
-    const matches = await matchesRes.json().catch(() => []);
+    const matchesData = await matchesRes.json().catch(() => ({}));
     const rooms   = await roomsRes.json().catch(() => []);
     const users   = await usersRes.json().catch(() => []);
     const roster  = await rosterRes.json().catch(() => []);
 
-    // Sadece bugün ve sonrasındaki maçları filtrele
-    const upcomingMatches = Array.isArray(matches)
-      ? matches.filter(m => m.game_date && m.game_date >= today).slice(0, 5)
-      : [];
+    // arenagames {count, games} formatında döner
+    const allMatches = Array.isArray(matchesData) ? matchesData : (matchesData.games || []);
+    const upcomingMatches = allMatches.slice(0, 5);
     const totalPlayers    = Array.isArray(roster) ? roster.filter(p => p.type !== 'staff').length : 0;
     const totalUsers      = Array.isArray(users) ? users.length : 0;
 
     // Oda ataması yapılmamış maçları bul
     const assignedGameIds = new Set(Array.isArray(rooms) ? rooms.map(r => r.game_id) : []);
-    const missingRooms = upcomingMatches.filter(m => !assignedGameIds.has(m.game_id));
+    const missingRooms = upcomingMatches.filter(m => !assignedGameIds.has(m.gameId || m.game_id));
 
     el.innerHTML =
       // Üst kartlar
@@ -543,8 +542,9 @@ async function loadDashboard() {
           ? '<div class="empty-state">Inga kommande matcher</div>'
           : '<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Hemmalag</th><th>Bortalag</th><th>Liga</th></tr></thead><tbody>' +
             upcomingMatches.map(m => {
-              const d = new Date(m.game_date).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'});
-              return '<tr><td>' + d + '</td><td>' + (m.home_team||'—') + '</td><td>' + (m.away_team||'—') + '</td><td style="color:var(--muted);font-size:0.85rem;">' + (m.league_name||'—') + '</td></tr>';
+              const dateVal = m.gameDate || m.game_date || '';
+              const d = dateVal ? new Date(dateVal).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'}) : '—';
+              return '<tr><td>' + d + '</td><td>' + (m.homeTeam||m.home_team||'—') + '</td><td>' + (m.awayTeam||m.away_team||'—') + '</td><td style="color:var(--muted);font-size:0.85rem;">' + (m.leagueName||m.league_name||'—') + '</td></tr>';
             }).join('') +
             '</tbody></table></div>') +
       '</div>' +
@@ -555,8 +555,9 @@ async function loadDashboard() {
           '<div class="section-title">⚠️ Omklädningsrum saknas</div>' +
           '<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Hemmalag</th><th>Bortalag</th></tr></thead><tbody>' +
           missingRooms.map(m => {
-            const d = new Date(m.game_date).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'});
-            return '<tr><td>' + d + '</td><td style="color:var(--red);">' + (m.home_team||'—') + '</td><td>' + (m.away_team||'—') + '</td></tr>';
+            const dateVal = m.gameDate || m.game_date || '';
+            const d = dateVal ? new Date(dateVal).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'}) : '—';
+            return '<tr><td>' + d + '</td><td style="color:var(--red);">' + (m.homeTeam||m.home_team||'—') + '</td><td>' + (m.awayTeam||m.away_team||'—') + '</td></tr>';
           }).join('') +
           '</tbody></table></div></div>'
         : '');
