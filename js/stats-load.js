@@ -526,17 +526,19 @@ async function loadDashboard() {
     const assignedGameIds = new Set(Array.isArray(rooms) ? rooms.map(r => r.game_id) : []);
     const missingRooms = upcomingMatches.filter(m => !assignedGameIds.has(m.gameId || m.game_id));
 
+    // MyClub verisini bekle
+    const myClubHtml = await _dashMyClub();
+
     el.innerHTML =
       // Üst kartlar
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">' +
         _dashCard('⚽', upcomingMatches.length, 'Kommande matcher', 'var(--accent)') +
         _dashCard('👥', totalPlayers, 'Aktiva spelare', 'var(--green)') +
         _dashCard('👤', totalUsers, 'Användare', 'var(--yellow)') +
-
       '</div>' +
 
       // MyClub müsaitlik bölümü
-      _dashMyClub() +
+      myClubHtml +
 
       // Yaklaşan maçlar
       '<div style="margin-bottom:2rem;">' +
