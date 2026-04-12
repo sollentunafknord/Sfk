@@ -107,6 +107,7 @@ module.exports = async (req, res) => {
 
           return {
             id: ev.id,
+            invitation_id: ev.invitation_id || ev.id,
             title: ev.title,
             start: ev.start,
             location: ev.location,
@@ -120,6 +121,7 @@ module.exports = async (req, res) => {
         } catch(e) {
           return {
             id: ev.id,
+            invitation_id: ev.invitation_id || ev.id,
             title: ev.title,
             start: ev.start,
             location: ev.location,
@@ -142,16 +144,31 @@ module.exports = async (req, res) => {
       const id = req.query.id;
       if (!id) return res.status(400).json({ error: 'id required' });
 
-      const detailRes = await myClubGet('/activities/' + id + '/');
+      // Önce verilen ID ile dene, olmassa invitation endpoint'i dene
+      let detailRes = await myClubGet('/activities/' + id + '/');
+      
+      // Eğer invited_members boşsa farklı bir endpoint dene
+      if (detailRes.status === 200 && detailRes.data) {
+        const testMembers = detailRes.data.activity?.invited_members || detailRes.data.invited_members || [];
+        if (testMembers.length === 0) {
+          // activity_id ile dene
+          const altRes = await myClubGet('/activities/?activity_id=' + id);
+          if (altRes.status === 200 && altRes.data) {
+            detailRes = altRes;
+          }
+        }
+      }
+
       if (detailRes.status !== 200 || !detailRes.data) {
         return res.status(200).json({ members: [] });
       }
 
-      const members = detailRes.data.activity?.invited_members || [];
-      // Sadece oyuncular (leader: false)
-      const players = members.filter(m => !m.leader).map(m => ({
+      const members = (detailRes.data.activity?.invited_members || detailRes.data.invited_members || []);
+      // Tüm üyeler (oyuncu + lider)
+      const players = members.map(m => ({
         member_name: m.member_name,
         status: m.status,
+        leader: m.leader || false,
         comment: m.comment || null,
         response_date: m.response_date,
       }));
