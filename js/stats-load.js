@@ -505,7 +505,7 @@ async function loadDashboard() {
 
     // Paralel çek
     const [matchesRes, roomsRes, usersRes, rosterRes] = await Promise.all([
-      fetch('/api/admin?action=savedmatches&dateFrom=' + today + '&dateTo=' + nextWeek, {headers: authHeaders()}),
+      fetch('/api/admin?action=savedmatches', {headers: authHeaders()}),
       fetch('/api/admin?action=getrooms', {headers: authHeaders()}),
       fetch('/api/auth?action=users', {headers: authHeaders()}),
       fetch('/api/admin?action=activeroster', {headers: authHeaders()}),
@@ -516,7 +516,10 @@ async function loadDashboard() {
     const users   = await usersRes.json().catch(() => []);
     const roster  = await rosterRes.json().catch(() => []);
 
-    const upcomingMatches = Array.isArray(matches) ? matches.slice(0, 5) : [];
+    // Sadece bugün ve sonrasındaki maçları filtrele
+    const upcomingMatches = Array.isArray(matches)
+      ? matches.filter(m => m.game_date && m.game_date >= today).slice(0, 5)
+      : [];
     const totalPlayers    = Array.isArray(roster) ? roster.filter(p => p.type !== 'staff').length : 0;
     const totalUsers      = Array.isArray(users) ? users.length : 0;
 
