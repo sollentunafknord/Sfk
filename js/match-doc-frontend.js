@@ -224,8 +224,6 @@ function matchFormFields(c) {
     '<div style="margin-bottom:1rem;"><label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Taktiska instruktioner</label>' +
     '<textarea id="mdf_tactics" rows="4" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.5rem;border-radius:6px;font-size:0.9rem;box-sizing:border-box;resize:vertical;">' + (c.tactics||'') + '</textarea></div>' +
 
-    '<div style="margin-bottom:1rem;"><label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">Startuppst\u00e4llning (en spelare per rad)</label>' +
-    '<textarea id="mdf_lineup" rows="6" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.5rem;border-radius:6px;font-size:0.9rem;box-sizing:border-box;resize:vertical;">' + (c.lineup||'') + '</textarea></div>' +
 
     '<div style="margin-bottom:1rem;"><label style="font-size:0.8rem;color:var(--muted);display:block;margin-bottom:0.3rem;">&#x1F4DD; \u00d6vriga anteckningar</label>' +
     '<textarea id="mdf_notes" rows="3" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.5rem;border-radius:6px;font-size:0.9rem;box-sizing:border-box;resize:vertical;">' + (c.notes||'') + '</textarea></div>';
@@ -390,7 +388,6 @@ function downloadMatchDocPdf() {
     '</div>' +
     (leaders.length > 0 ? '<p style="font-size:0.85rem;color:#6b7280;margin-top:0.5rem;">Ledare: ' + leaders.join(', ') + '</p>' : '') +
 
-    (isMatch && vals.lineup ? '<h2>Startuppst\u00e4llning</h2><pre>' + vals.lineup + '</pre>' : '') +
     (isMatch && vals.tactics ? '<h2>Taktiska instruktioner</h2><pre>' + vals.tactics + '</pre>' : '') +
     (!isMatch && vals.plan ? '<h2>Tr\u00e4ningsplan</h2><pre>' + vals.plan + '</pre>' : '') +
     (vals.notes ? '<h2>Anteckningar</h2><pre>' + vals.notes + '</pre>' : '') +
