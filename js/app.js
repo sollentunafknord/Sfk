@@ -39,7 +39,7 @@ function adminTab(tab) {
   if (tab === 'cv') populateCvPlayerSelect().catch(()=>{});
   if (tab === 'omkladningsrum') initOmkladningsrum();
   if (tab === 'parametrar') loadActiveTeams();
-  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'dashboard' && typeof loadDashboard === 'function') loadDashboard();
 }
 
 function oyuncuTab(tab) {

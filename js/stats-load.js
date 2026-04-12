@@ -588,7 +588,7 @@ async function _dashMyClub() {
       '<div id="myClubDetailPanel" style="display:none;margin-top:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
       '<div id="myClubDetailTitle" style="font-weight:700;font-size:1.1rem;color:var(--accent);"></div>' +
-      '<button onclick="document.getElementById('myClubDetailPanel').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">&#x2715;</button>' +
+      '<button onclick="closeMyClubDetail()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">&#x2715;</button>' +
       '</div>' +
       '<div id="myClubDetailContent"></div>' +
       '</div>' +
@@ -596,6 +596,11 @@ async function _dashMyClub() {
   } catch(e) {
     return '';
   }
+}
+
+function closeMyClubDetail() {
+  var panel = document.getElementById('myClubDetailPanel');
+  if (panel) panel.style.display = 'none';
 }
 
 async function openMyClubDetail(idx) {
