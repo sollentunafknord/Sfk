@@ -140,15 +140,12 @@ function showMatchDocForm(ev, selected, existing) {
   var c = existing ? (existing.content || {}) : {};
   var dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
 
-  // MyClub'dan gelen verilerle otomatik doldur (sadece ilk açılışta)
-  if (!existing) {
-    if (!c.location) c.location = ev.location || ev.activity_location || '';
-    if (!c.meetup && ev.meet_up_time) c.meetup = ev.meet_up_time + (ev.meet_up_place ? ' — ' + ev.meet_up_place : '');
-    if (!c.opponent && isMatch) {
-      // Rakibi başlıktan çıkar: "SFK P16A - Lidingö P16A" → "Lidingö P16A"
-      var parts = ev.title.split(' - ');
-      if (parts.length > 1) c.opponent = parts[parts.length - 1].trim();
-    }
+  // MyClub'dan gelen verilerle boş alanları otomatik doldur
+  if (!c.location) c.location = ev.location || ev.activity_location || '';
+  if (!c.meetup && ev.meet_up_time) c.meetup = ev.meet_up_time + (ev.meet_up_place ? ' — ' + ev.meet_up_place : '');
+  if (!c.opponent && isMatch) {
+    var parts = ev.title.split(' - ');
+    if (parts.length > 1) c.opponent = parts[parts.length - 1].trim();
   }
 
   // Modal oluştur
