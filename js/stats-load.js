@@ -598,63 +598,7 @@ async function _dashMyClub() {
   }
 }
 
-function closeMyClubDetail() {
-  var panel = document.getElementById('myClubDetailPanel');
-  if (panel) panel.style.display = 'none';
-}
 
-async function openMyClubDetail(idx) {
-  var events = window._myClubEvents || [];
-  var ev = events[idx];
-  if (!ev) return;
-
-  var panel = document.getElementById('myClubDetailPanel');
-  var title = document.getElementById('myClubDetailTitle');
-  var contentEl = document.getElementById('myClubDetailContent');
-  if (!panel || !title || !contentEl) return;
-
-  var dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}) : '';
-  title.textContent = ev.title + ' — ' + dateStr;
-  contentEl.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>';
-  panel.style.display = 'block';
-  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
-
-  try {
-    var r = await fetch('/api/myclub?action=detail&id=' + ev.id, {headers: authHeaders()});
-    var d = await r.json();
-
-    if (!d.members || d.members.length === 0) {
-      contentEl.innerHTML = '<div class="empty-state">Ingen data</div>';
-      return;
-    }
-
-    var accepted = d.members.filter(function(m) { return m.status === 'accepted'; });
-    var denied   = d.members.filter(function(m) { return m.status === 'denied'; });
-    var waiting  = d.members.filter(function(m) { return m.status === 'waiting'; });
-
-    function memberRow(m) {
-      return '<div style="padding:0.3rem 0;font-size:0.9rem;">' + m.member_name +
-        (m.comment ? '<span style="color:var(--muted);font-size:0.8rem;"> — ' + m.comment + '</span>' : '') +
-        '</div>';
-    }
-
-    contentEl.innerHTML =
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
-      '<div style="background:rgba(0,230,118,0.08);border:1px solid var(--green);border-radius:8px;padding:0.75rem;">' +
-      '<div style="color:var(--green);font-weight:700;margin-bottom:0.5rem;">&#x2705; Ja (' + accepted.length + ')</div>' +
-      accepted.map(memberRow).join('') + '</div>' +
-      '<div style="background:rgba(255,23,68,0.08);border:1px solid var(--red);border-radius:8px;padding:0.75rem;">' +
-      '<div style="color:var(--red);font-weight:700;margin-bottom:0.5rem;">&#x274C; Nej (' + denied.length + ')</div>' +
-      denied.map(memberRow).join('') + '</div>' +
-      '<div style="background:rgba(255,214,0,0.08);border:1px solid var(--yellow);border-radius:8px;padding:0.75rem;">' +
-      '<div style="color:var(--yellow);font-weight:700;margin-bottom:0.5rem;">&#x23F3; Väntar (' + waiting.length + ')</div>' +
-      waiting.map(memberRow).join('') + '</div>' +
-      '</div>';
-
-  } catch(e) {
-    contentEl.innerHTML = '<div class="empty-state">Fel: ' + e.message + '</div>';
-  }
-}
 function _dashCard(icon, value, label, color) {
   return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;">' +
     '<div style="font-size:1.8rem;margin-bottom:0.25rem;">' + icon + '</div>' +
