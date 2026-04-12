@@ -24,7 +24,8 @@ async function openMyClubDetail(idx) {
   panel.scrollIntoView({behavior:'smooth', block:'nearest'});
 
   try {
-    var r = await fetch('/api/myclub?action=detail&id=' + ev.id, {headers: authHeaders()});
+    var invId = ev.invitation_id || ev.id;
+    var r = await fetch('/api/myclub?action=detail&id=' + invId + '&invitation_id=' + invId, {headers: authHeaders()});
     var d = await r.json();
 
     if (!d.members || d.members.length === 0) {

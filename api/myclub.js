@@ -106,7 +106,7 @@ module.exports = async (req, res) => {
           const waiting  = players.filter(m => m.status === 'waiting').length;
 
           return {
-            id: ev.id,
+            id: ev.activity_id || ev.id,
             invitation_id: ev.invitation_id || ev.id,
             title: ev.title,
             start: ev.start,
@@ -120,7 +120,7 @@ module.exports = async (req, res) => {
           };
         } catch(e) {
           return {
-            id: ev.id,
+            id: ev.activity_id || ev.id,
             invitation_id: ev.invitation_id || ev.id,
             title: ev.title,
             start: ev.start,
@@ -145,19 +145,9 @@ module.exports = async (req, res) => {
       if (!id) return res.status(400).json({ error: 'id required' });
 
       // Önce verilen ID ile dene, olmassa invitation endpoint'i dene
-      let detailRes = await myClubGet('/activities/' + id + '/');
-      
-      // Eğer invited_members boşsa farklı bir endpoint dene
-      if (detailRes.status === 200 && detailRes.data) {
-        const testMembers = detailRes.data.activity?.invited_members || detailRes.data.invited_members || [];
-        if (testMembers.length === 0) {
-          // activity_id ile dene
-          const altRes = await myClubGet('/activities/?activity_id=' + id);
-          if (altRes.status === 200 && altRes.data) {
-            detailRes = altRes;
-          }
-        }
-      }
+      // invitation_id ile detay çek
+      const invitationId = req.query.invitation_id || id;
+      let detailRes = await myClubGet('/activities/' + invitationId + '/');
 
       if (detailRes.status !== 200 || !detailRes.data) {
         return res.status(200).json({ members: [] });
