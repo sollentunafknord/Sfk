@@ -161,20 +161,10 @@ function showMatchDocForm(ev, selected, existing) {
   var playerGroups = { accepted: [], denied: [], waiting: [], leader: [] };
   selected.forEach(function(s) { if (playerGroups[s.group]) playerGroups[s.group].push(s.name); });
 
+  var allPlayers = playerGroups.accepted.concat(playerGroups.denied).concat(playerGroups.waiting);
   var playerListHtml =
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:1rem;">' +
-    '<div style="background:rgba(0,230,118,0.08);border:1px solid var(--green);border-radius:8px;padding:0.75rem;">' +
-    '<div style="color:var(--green);font-weight:700;font-size:0.85rem;margin-bottom:0.4rem;">&#x2705; Ja (' + playerGroups.accepted.length + ')</div>' +
-    playerGroups.accepted.map(function(n) { return '<div style="font-size:0.85rem;padding:1px 0;">' + n + '</div>'; }).join('') +
-    '</div>' +
-    '<div style="background:rgba(255,23,68,0.08);border:1px solid var(--red);border-radius:8px;padding:0.75rem;">' +
-    '<div style="color:var(--red);font-weight:700;font-size:0.85rem;margin-bottom:0.4rem;">&#x274C; Nej (' + playerGroups.denied.length + ')</div>' +
-    playerGroups.denied.map(function(n) { return '<div style="font-size:0.85rem;padding:1px 0;">' + n + '</div>'; }).join('') +
-    '</div>' +
-    '<div style="background:rgba(255,214,0,0.08);border:1px solid var(--yellow);border-radius:8px;padding:0.75rem;">' +
-    '<div style="color:var(--yellow);font-weight:700;font-size:0.85rem;margin-bottom:0.4rem;">&#x23F3; V\u00e4ntar (' + playerGroups.waiting.length + ')</div>' +
-    playerGroups.waiting.map(function(n) { return '<div style="font-size:0.85rem;padding:1px 0;">' + n + '</div>'; }).join('') +
-    '</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;">' +
+    allPlayers.map(function(n) { return '<span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:0.2rem 0.7rem;font-size:0.85rem;">' + n + '</span>'; }).join('') +
     '</div>';
 
   modal.innerHTML =
