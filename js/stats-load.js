@@ -535,6 +535,9 @@ async function loadDashboard() {
 
       '</div>' +
 
+      // MyClub müsaitlik bölümü
+      _dashMyClub() +
+
       // Yaklaşan maçlar
       '<div style="margin-bottom:2rem;">' +
         '<div class="section-title">📅 Kommande matcher</div>' +
@@ -553,6 +556,36 @@ async function loadDashboard() {
 
   } catch(e) {
     el.innerHTML = '<div class="empty-state">Fel: ' + e.message + '</div>';
+  }
+}
+
+async function _dashMyClub() {
+  try {
+    const r = await fetch('/api/myclub?action=upcoming', {headers: authHeaders()});
+    const d = await r.json();
+    if (!d.events || d.events.length === 0) return '';
+
+    const rows = d.events.map(ev => {
+      const dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
+      const isMatch = ev.activity_type === 'Match';
+      return '<tr style="border-bottom:1px solid var(--border);">' +
+        '<td style="padding:0.6rem 0.8rem;white-space:nowrap;">' + dateStr + '</td>' +
+        '<td style="padding:0.6rem 0.8rem;font-weight:600;">' + (ev.title || '—') + '</td>' +
+        '<td style="padding:0.6rem 0.8rem;color:var(--muted);font-size:0.85rem;">' + (ev.calendar_name || '—') + '</td>' +
+        '<td style="padding:0.6rem 0.8rem;color:var(--green);font-weight:600;">✅ ' + ev.accepted + '</td>' +
+        '<td style="padding:0.6rem 0.8rem;color:var(--red);font-weight:600;">❌ ' + ev.denied + '</td>' +
+        '<td style="padding:0.6rem 0.8rem;color:var(--yellow);">⏳ ' + ev.waiting + '</td>' +
+        '</tr>';
+    }).join('');
+
+    return '<div style="margin-bottom:2rem;">' +
+      '<div class="section-title">⚽ MyClub — Kommande aktiviteter</div>' +
+      '<div class="table-wrap"><table>' +
+      '<thead><tr>' +
+      '<th>Tid</th><th>Titel</th><th>Lag</th><th>Ja</th><th>Nej</th><th>Väntar</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  } catch(e) {
+    return '';
   }
 }
 
