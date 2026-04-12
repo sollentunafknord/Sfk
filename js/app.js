@@ -25,7 +25,7 @@ function goHome() {
 }
 
 function adminTab(tab) {
-  const tabs = ['matches','stats','users','cv','omkladningsrum','parametrar'];
+  const tabs = ['matches','stats','users','cv','omkladningsrum','parametrar','dashboard'];
   document.querySelectorAll('#viewAdmin .tab').forEach((t, i) => {
     t.classList.toggle('active', tabs[i] === tab);
   });
@@ -35,9 +35,11 @@ function adminTab(tab) {
   document.getElementById('adminCv').style.display = tab === 'cv' ? 'block' : 'none';
   document.getElementById('adminOmkladningsrum').style.display = tab === 'omkladningsrum' ? 'block' : 'none';
   document.getElementById('adminParametrar').style.display = tab === 'parametrar' ? 'block' : 'none';
+  document.getElementById('adminDashboard').style.display = tab === 'dashboard' ? 'block' : 'none';
   if (tab === 'cv') populateCvPlayerSelect().catch(()=>{});
   if (tab === 'omkladningsrum') initOmkladningsrum();
   if (tab === 'parametrar') loadActiveTeams();
+  if (tab === 'dashboard') loadDashboard();
 }
 
 function oyuncuTab(tab) {

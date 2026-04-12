@@ -121,7 +121,7 @@ function showApp() {
     if (el && !el.value) el.value = id.includes('To') ? today : '2025-01-01';
   });
 
-  if (u.role === 'admin') { loadUsers(); populatePlayerSelect(); }
+  if (u.role === 'admin') { loadUsers(); populatePlayerSelect(); adminTab('dashboard'); }
   if (u.role === 'antrenor') {
     loadUsers();
     populatePlayerSelect();
@@ -175,8 +175,10 @@ function showApp() {
   // Omklädningsrum ve Parametrar sadece admin
   const omkTab = document.getElementById('omkladningsrumTab');
   const paramTab = document.getElementById('parametrarTab');
+  const dashTab = document.getElementById('dashboardTab');
   if (omkTab) omkTab.style.display = (u.role === 'admin' || u.role === 'klubbledare') ? 'inline-block' : 'none';
   if (paramTab) paramTab.style.display = u.role === 'admin' ? 'inline-block' : 'none';
+  if (dashTab) dashTab.style.display = u.role === 'admin' ? 'inline-block' : 'none';
   // Matcher ve Stats: admin, antrenor, klubbledare
   const matchesTab = document.querySelector('#viewAdmin .tab[onclick*="matches"]');
   const statsTab = document.querySelector('#viewAdmin .tab[onclick*="stats"]');

@@ -175,9 +175,13 @@ async function updateStatsPlayerFilter(teamId) {
     } else if (teamId) {
       filtered = filtered.filter(p => p.teamId === teamId);
     }
-    el.innerHTML = filtered.map(p =>
-      `<label><input type="checkbox" class="player-filter" value="${p.playerId}" checked> #${p.shirt||'—'} ${p.name}</label>`
-    ).join('');
+    el.innerHTML = filtered.map(p => {
+      // SFK_PLAYERS'dan eksik bilgileri tamamla
+      const fallback = (typeof SFK_PLAYERS !== 'undefined') ? SFK_PLAYERS[p.playerId] : null;
+      const shirt = p.shirt || (fallback ? fallback.shirt : null) || '—';
+      const name = p.name || (fallback ? fallback.name : '—');
+      return `<label><input type="checkbox" class="player-filter" value="${p.playerId}" checked> #${shirt} ${name}</label>`;
+    }).join('');
     el.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
       const all = el.querySelectorAll('input');
       const checked = el.querySelectorAll('input:checked');
@@ -488,3 +492,81 @@ document.addEventListener('DOMContentLoaded', () => {
   initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
   initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
 });
+
+// ===================== DASHBOARD =====================
+async function loadDashboard() {
+  const el = document.getElementById('dashboardContent');
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>';
+
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    // Paralel çek
+    const [matchesRes, roomsRes, usersRes, rosterRes] = await Promise.all([
+      fetch('/api/admin?action=savedmatches&dateFrom=' + today + '&dateTo=' + nextWeek, {headers: authHeaders()}),
+      fetch('/api/admin?action=getrooms', {headers: authHeaders()}),
+      fetch('/api/auth?action=users', {headers: authHeaders()}),
+      fetch('/api/admin?action=activeroster', {headers: authHeaders()}),
+    ]);
+
+    const matches = await matchesRes.json().catch(() => []);
+    const rooms   = await roomsRes.json().catch(() => []);
+    const users   = await usersRes.json().catch(() => []);
+    const roster  = await rosterRes.json().catch(() => []);
+
+    const upcomingMatches = Array.isArray(matches) ? matches.slice(0, 5) : [];
+    const totalPlayers    = Array.isArray(roster) ? roster.filter(p => p.type !== 'staff').length : 0;
+    const totalUsers      = Array.isArray(users) ? users.length : 0;
+
+    // Oda ataması yapılmamış maçları bul
+    const assignedGameIds = new Set(Array.isArray(rooms) ? rooms.map(r => r.game_id) : []);
+    const missingRooms = upcomingMatches.filter(m => !assignedGameIds.has(m.game_id));
+
+    el.innerHTML =
+      // Üst kartlar
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">' +
+        _dashCard('⚽', upcomingMatches.length, 'Kommande matcher', 'var(--accent)') +
+        _dashCard('👥', totalPlayers, 'Aktiva spelare', 'var(--green)') +
+        _dashCard('👤', totalUsers, 'Användare', 'var(--yellow)') +
+        _dashCard('⚠️', missingRooms.length, 'Rum ej tilldelade', missingRooms.length > 0 ? 'var(--red)' : 'var(--green)') +
+      '</div>' +
+
+      // Yaklaşan maçlar
+      '<div style="margin-bottom:2rem;">' +
+        '<div class="section-title">📅 Kommande matcher</div>' +
+        (upcomingMatches.length === 0
+          ? '<div class="empty-state">Inga kommande matcher</div>'
+          : '<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Hemmalag</th><th>Bortalag</th><th>Liga</th></tr></thead><tbody>' +
+            upcomingMatches.map(m => {
+              const d = new Date(m.game_date).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'});
+              return '<tr><td>' + d + '</td><td>' + (m.home_team||'—') + '</td><td>' + (m.away_team||'—') + '</td><td style="color:var(--muted);font-size:0.85rem;">' + (m.league_name||'—') + '</td></tr>';
+            }).join('') +
+            '</tbody></table></div>') +
+      '</div>' +
+
+      // Oda ataması eksik
+      (missingRooms.length > 0
+        ? '<div>' +
+          '<div class="section-title">⚠️ Omklädningsrum saknas</div>' +
+          '<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Hemmalag</th><th>Bortalag</th></tr></thead><tbody>' +
+          missingRooms.map(m => {
+            const d = new Date(m.game_date).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'});
+            return '<tr><td>' + d + '</td><td style="color:var(--red);">' + (m.home_team||'—') + '</td><td>' + (m.away_team||'—') + '</td></tr>';
+          }).join('') +
+          '</tbody></table></div></div>'
+        : '');
+
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state">Fel: ' + e.message + '</div>';
+  }
+}
+
+function _dashCard(icon, value, label, color) {
+  return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;">' +
+    '<div style="font-size:1.8rem;margin-bottom:0.25rem;">' + icon + '</div>' +
+    '<div style="font-size:2rem;font-weight:700;color:' + color + ';font-family:\'Barlow Condensed\',sans-serif;">' + value + '</div>' +
+    '<div style="font-size:0.8rem;color:var(--muted);margin-top:0.25rem;">' + label + '</div>' +
+    '</div>';
+}
