@@ -136,5 +136,31 @@ module.exports = async (req, res) => {
     }
   }
 
+  // Etkinlik detayı — oyuncu listesi
+  if (action === 'detail') {
+    try {
+      const id = req.query.id;
+      if (!id) return res.status(400).json({ error: 'id required' });
+
+      const detailRes = await myClubGet('/activities/' + id + '/');
+      if (detailRes.status !== 200 || !detailRes.data) {
+        return res.status(200).json({ members: [] });
+      }
+
+      const members = detailRes.data.activity?.invited_members || [];
+      // Sadece oyuncular (leader: false)
+      const players = members.filter(m => !m.leader).map(m => ({
+        member_name: m.member_name,
+        status: m.status,
+        comment: m.comment || null,
+        response_date: m.response_date,
+      }));
+
+      return res.status(200).json({ members: players });
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   return res.status(400).json({ error: 'Ogiltig åtgärd' });
 };

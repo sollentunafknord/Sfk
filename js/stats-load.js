@@ -567,12 +567,14 @@ async function _dashMyClub() {
     const d = await r.json();
     if (!d.events || d.events.length === 0) return '';
 
-    const rows = d.events.map(ev => {
+    // Global kaydet — detay için kullanacağız
+    window._myClubEvents = d.events;
+
+    const rows = d.events.map((ev, idx) => {
       const dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
-      const isMatch = ev.activity_type === 'Match';
-      return '<tr style="border-bottom:1px solid var(--border);">' +
+      return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openMyClubDetail(' + idx + ')" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">' +
         '<td style="padding:0.6rem 0.8rem;white-space:nowrap;">' + dateStr + '</td>' +
-        '<td style="padding:0.6rem 0.8rem;font-weight:600;">' + (ev.title || '—') + '</td>' +
+        '<td style="padding:0.6rem 0.8rem;font-weight:600;color:var(--accent);">' + (ev.title || '—') + '</td>' +
         '<td style="padding:0.6rem 0.8rem;color:var(--muted);font-size:0.85rem;">' + (ev.calendar_name || '—') + '</td>' +
         '<td style="padding:0.6rem 0.8rem;color:var(--green);font-weight:600;">✅ ' + ev.accepted + '</td>' +
         '<td style="padding:0.6rem 0.8rem;color:var(--red);font-weight:600;">❌ ' + ev.denied + '</td>' +
@@ -585,9 +587,80 @@ async function _dashMyClub() {
       '<div class="table-wrap"><table>' +
       '<thead><tr>' +
       '<th>Tid</th><th>Titel</th><th>Lag</th><th>Ja</th><th>Nej</th><th>Väntar</th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+      '</tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      // Detay paneli
+      '<div id="myClubDetailPanel" style="display:none;margin-top:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
+      '<div id="myClubDetailTitle" style="font-weight:700;font-size:1.1rem;font-family:'Barlow Condensed',sans-serif;color:var(--accent);"></div>' +
+      '<button onclick="document.getElementById('myClubDetailPanel').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>' +
+      '</div>' +
+      '<div id="myClubDetailContent"></div>' +
+      '</div>' +
+      '</div>';
   } catch(e) {
     return '';
+  }
+}
+
+async function openMyClubDetail(idx) {
+  const events = window._myClubEvents || [];
+  const ev = events[idx];
+  if (!ev) return;
+
+  const panel = document.getElementById('myClubDetailPanel');
+  const title = document.getElementById('myClubDetailTitle');
+  const content = document.getElementById('myClubDetailContent');
+  if (!panel || !title || !content) return;
+
+  // Başlık
+  const dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long', hour:'2-digit', minute:'2-digit'}) : '';
+  title.textContent = ev.title + ' — ' + dateStr;
+  content.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>';
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  try {
+    // Detay verisi çek
+    const r = await fetch('/api/myclub?action=detail&id=' + ev.id, {headers: authHeaders()});
+    const d = await r.json();
+
+    if (!d.members || d.members.length === 0) {
+      content.innerHTML = '<div class="empty-state">Ingen data</div>';
+      return;
+    }
+
+    const accepted = d.members.filter(m => m.status === 'accepted');
+    const denied   = d.members.filter(m => m.status === 'denied');
+    const waiting  = d.members.filter(m => m.status === 'waiting');
+
+    const memberRow = (m) =>
+      '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;">' +
+      '<span style="font-size:0.9rem;">' + m.member_name + '</span>' +
+      (m.comment ? '<span style="color:var(--muted);font-size:0.8rem;">— ' + m.comment + '</span>' : '') +
+      '</div>';
+
+    content.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">' +
+
+      '<div style="background:rgba(0,230,118,0.08);border:1px solid var(--green);border-radius:8px;padding:0.75rem;">' +
+      '<div style="color:var(--green);font-weight:700;margin-bottom:0.5rem;">✅ Ja (' + accepted.length + ')</div>' +
+      accepted.map(memberRow).join('') +
+      '</div>' +
+
+      '<div style="background:rgba(255,23,68,0.08);border:1px solid var(--red);border-radius:8px;padding:0.75rem;">' +
+      '<div style="color:var(--red);font-weight:700;margin-bottom:0.5rem;">❌ Nej (' + denied.length + ')</div>' +
+      denied.map(memberRow).join('') +
+      '</div>' +
+
+      '<div style="background:rgba(255,214,0,0.08);border:1px solid var(--yellow);border-radius:8px;padding:0.75rem;">' +
+      '<div style="color:var(--yellow);font-weight:700;margin-bottom:0.5rem;">⏳ Väntar (' + waiting.length + ')</div>' +
+      waiting.map(memberRow).join('') +
+      '</div>' +
+
+      '</div>';
+
+  } catch(e) {
+    content.innerHTML = '<div class="empty-state">Fel: ' + e.message + '</div>';
   }
 }
 
