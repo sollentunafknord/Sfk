@@ -264,7 +264,7 @@ async function saveMatchDoc(selected) {
   if (!ev) return;
 
   // İlk kayıtta isim sor
-  if (!_matchDocData || !_matchDocData.id) {
+  if (true) {
     var docName = prompt('Ge dokumentet ett namn:', ev.title);
     if (docName === null) return;
     if (!docName.trim()) docName = ev.title;
