@@ -532,7 +532,7 @@ async function loadDashboard() {
         _dashCard('⚽', upcomingMatches.length, 'Kommande matcher', 'var(--accent)') +
         _dashCard('👥', totalPlayers, 'Aktiva spelare', 'var(--green)') +
         _dashCard('👤', totalUsers, 'Användare', 'var(--yellow)') +
-        _dashCard('⚠️', missingRooms.length, 'Rum ej tilldelade', missingRooms.length > 0 ? 'var(--red)' : 'var(--green)') +
+
       '</div>' +
 
       // Yaklaşan maçlar
@@ -549,18 +549,7 @@ async function loadDashboard() {
             '</tbody></table></div>') +
       '</div>' +
 
-      // Oda ataması eksik
-      (missingRooms.length > 0
-        ? '<div>' +
-          '<div class="section-title">⚠️ Omklädningsrum saknas</div>' +
-          '<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Hemmalag</th><th>Bortalag</th></tr></thead><tbody>' +
-          missingRooms.map(m => {
-            const dateVal = m.gameDate || m.game_date || '';
-            const d = dateVal ? new Date(dateVal).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'}) : '—';
-            return '<tr><td>' + d + '</td><td style="color:var(--red);">' + (m.homeTeam||m.home_team||'—') + '</td><td>' + (m.awayTeam||m.away_team||'—') + '</td></tr>';
-          }).join('') +
-          '</tbody></table></div></div>'
-        : '');
+      '';
 
   } catch(e) {
     el.innerHTML = '<div class="empty-state">Fel: ' + e.message + '</div>';
