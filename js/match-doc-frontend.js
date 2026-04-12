@@ -142,7 +142,7 @@ function showMatchDocForm(ev, selected, existing) {
 
   // MyClub'dan gelen verilerle otomatik doldur (sadece ilk açılışta)
   if (!existing) {
-    if (!c.location && ev.location) c.location = ev.location;
+    if (!c.location) c.location = ev.location || ev.activity_location || '';
     if (!c.meetup && ev.meet_up_time) c.meetup = ev.meet_up_time + (ev.meet_up_place ? ' — ' + ev.meet_up_place : '');
     if (!c.opponent && isMatch) {
       // Rakibi başlıktan çıkar: "SFK P16A - Lidingö P16A" → "Lidingö P16A"

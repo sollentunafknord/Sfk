@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
             invitation_id: ev.invitation_id || ev.id,
             title: ev.title,
             start: ev.start,
-            location: ev.location,
+            location: ev.location || ev.activity_location || null,
             meet_up_time: ev.meet_up_time || null,
             meet_up_place: ev.meet_up_place || null,
             activity_type: ev.activity_type,
@@ -126,7 +126,7 @@ module.exports = async (req, res) => {
             invitation_id: ev.invitation_id || ev.id,
             title: ev.title,
             start: ev.start,
-            location: ev.location,
+            location: ev.location || ev.activity_location || null,
             activity_type: ev.activity_type,
             accepted: 0, denied: 0, waiting: 0, total: 0,
           };
