@@ -140,6 +140,17 @@ function showMatchDocForm(ev, selected, existing) {
   var c = existing ? (existing.content || {}) : {};
   var dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
 
+  // MyClub'dan gelen verilerle otomatik doldur (sadece ilk açılışta)
+  if (!existing) {
+    if (!c.location && ev.location) c.location = ev.location;
+    if (!c.meetup && ev.meet_up_time) c.meetup = ev.meet_up_time + (ev.meet_up_place ? ' — ' + ev.meet_up_place : '');
+    if (!c.opponent && isMatch) {
+      // Rakibi başlıktan çıkar: "SFK P16A - Lidingö P16A" → "Lidingö P16A"
+      var parts = ev.title.split(' - ');
+      if (parts.length > 1) c.opponent = parts[parts.length - 1].trim();
+    }
+  }
+
   // Modal oluştur
   var modal = document.getElementById('matchDocModal');
   if (!modal) {
@@ -267,6 +278,14 @@ async function saveMatchDoc(selected) {
   var ev = _matchDocActivity;
   if (!ev) return;
 
+  // İlk kayıtta isim sor
+  if (!_matchDocData || !_matchDocData.id) {
+    var docName = prompt('Ge dokumentet ett namn:', ev.title);
+    if (docName === null) return; // İptal
+    if (!docName.trim()) docName = ev.title;
+    ev._docName = docName;
+  }
+
   var isMatch = ev.activity_type === 'Match';
   var content = { selected: selected };
 
@@ -284,7 +303,7 @@ async function saveMatchDoc(selected) {
     var body = {
       activity_id: ev.id,
       activity_type: ev.activity_type,
-      title: ev.title,
+      title: ev._docName || ev.title,
       content: content,
     };
     if (_matchDocData && _matchDocData.id) body.id = _matchDocData.id;

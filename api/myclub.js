@@ -111,6 +111,8 @@ module.exports = async (req, res) => {
             title: ev.title,
             start: ev.start,
             location: ev.location,
+            meet_up_time: ev.meet_up_time || null,
+            meet_up_place: ev.meet_up_place || null,
             activity_type: ev.activity_type,
             calendar_name: ev.calendar_name,
             accepted,
