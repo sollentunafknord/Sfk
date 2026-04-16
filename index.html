@@ -17,12 +17,14 @@
 <!-- LOGIN -->
 <div class="login-wrap" id="loginPage">
   <div class="login-box">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Sollentuna_FK_logo_%282022%29.svg/960px-Sollentuna_FK_logo_%282022%29.svg.png" alt="SFK">
+    <img src="/favicon.png" alt="SFK">
     <h2>Sollentuna FK</h2>
     <p>Spelarstatistik — Logga in</p>
-    <input type="text" id="loginUser" placeholder="Användarnamn" autocomplete="off">
-    <input type="password" id="loginPass" placeholder="Lösenord">
-    <button class="btn-login" onclick="doLogin()">Logga in</button>
+    <form onsubmit="doLogin(); return false;" autocomplete="on">
+      <input type="text" id="loginUser" placeholder="Användarnamn" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="Lösenord" autocomplete="current-password">
+      <button type="submit" class="btn-login">Logga in</button>
+    </form>
     <div class="login-error" id="loginErr"></div>
   </div>
 </div>
@@ -638,7 +640,6 @@
 <script src="/js/auth-app.js"></script>
 <script src="/js/match-doc-frontend.js"></script>
 <script>
-window.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 if (state.token && state.user) {
   fetch('/api/auth?action=verify', {headers: {'Authorization': 'Bearer ' + state.token}})
     .then(r => r.json())
