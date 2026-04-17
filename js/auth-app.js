@@ -114,8 +114,16 @@ function showApp() {
   if (mobileUserBadge) mobileUserBadge.textContent = displayName;
   const rb = document.getElementById('roleBadge');
   rb.textContent = u.role === 'admin' ? 'Admin' : u.role === 'antrenor' ? 'Tränare' : u.role === 'klubbledare' ? 'Klubbledare' : 'Spelare';
+  rb.className = 'role-badge role-' + u.role;
+  const mobileRoleBadge = document.getElementById('mobileRoleBadge');
+  if (mobileRoleBadge) { mobileRoleBadge.textContent = rb.textContent; mobileRoleBadge.className = rb.className; }
+
   // Avatar göster
   const headerAvatar = document.getElementById('headerAvatar');
+  const mobileAvatar = document.getElementById('mobileAvatar');
+  const mobileRefreshBtn = document.getElementById('mobileRefreshBtn');
+  if (mobileRefreshBtn) mobileRefreshBtn.style.display = u.role === 'admin' ? 'block' : 'none';
+
   function setAvatar(src) {
     if (headerAvatar) { headerAvatar.src = src; headerAvatar.style.display = 'inline-block'; }
     if (mobileAvatar) { mobileAvatar.src = src; mobileAvatar.style.display = 'inline-block'; }
@@ -133,12 +141,6 @@ function showApp() {
       .then(d => { if (d.avatarUrl) setAvatar(d.avatarUrl); })
       .catch(() => {});
   }
-  rb.className = 'role-badge role-' + u.role;
-  const mobileRoleBadge = document.getElementById('mobileRoleBadge');
-  if (mobileRoleBadge) { mobileRoleBadge.textContent = rb.textContent; mobileRoleBadge.className = rb.className; }
-  const mobileAvatar = document.getElementById('mobileAvatar');
-  const mobileRefreshBtn = document.getElementById('mobileRefreshBtn');
-  if (mobileRefreshBtn) mobileRefreshBtn.style.display = u.role === 'admin' ? 'block' : 'none';
 
   // Panel görünürlüğü
   document.getElementById('viewAdmin').style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'block' : 'none';
