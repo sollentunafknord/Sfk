@@ -37,8 +37,23 @@ function stopIdleDetection() {
 async function doLogin() {
   const username = document.getElementById('loginUser').value.trim();
   const password = document.getElementById('loginPass').value;
-  document.getElementById('loginErr').textContent = '';
-  if (!username || !password) { document.getElementById('loginErr').textContent = 'Fyll i alla fält'; return; }
+  const errEl = document.getElementById('loginErr');
+  const btn = document.querySelector('.btn-login');
+  const box = document.querySelector('.login-box');
+
+  errEl.textContent = '';
+
+  if (!username || !password) {
+    errEl.textContent = 'Fyll i alla fält';
+    box.classList.remove('shake');
+    void box.offsetWidth;
+    box.classList.add('shake');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Loggar in…';
+
   try {
     const r = await fetch('/api/auth?action=login', {
       method: 'POST',
@@ -46,14 +61,27 @@ async function doLogin() {
       body: JSON.stringify({username, password})
     });
     const d = await r.json();
-    if (!r.ok) { document.getElementById('loginErr').textContent = d.error || 'Fel'; return; }
+    if (!r.ok) {
+      errEl.textContent = d.error || 'Fel';
+      box.classList.remove('shake');
+      void box.offsetWidth;
+      box.classList.add('shake');
+      btn.disabled = false;
+      btn.textContent = 'Logga in';
+      return;
+    }
     state.token = d.token;
     state.user = d.user;
     localStorage.setItem('sfk_token', d.token);
     localStorage.setItem('sfk_user', JSON.stringify(d.user));
     showApp();
   } catch(e) {
-    document.getElementById('loginErr').textContent = 'Anslutningsfel';
+    errEl.textContent = 'Anslutningsfel';
+    box.classList.remove('shake');
+    void box.offsetWidth;
+    box.classList.add('shake');
+    btn.disabled = false;
+    btn.textContent = 'Logga in';
   }
 }
 
