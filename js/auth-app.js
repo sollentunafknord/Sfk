@@ -90,6 +90,12 @@ function doLogout() {
   state.token = null; state.user = null;
   localStorage.removeItem('sfk_token');
   localStorage.removeItem('sfk_user');
+  // Açık kalan panelleri sıfırla
+  ['instellningarPanel','githubPanel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  closeMobileMenu();
   document.getElementById('appPage').style.display = 'none';
   document.getElementById('loginPage').style.display = 'flex';
 }

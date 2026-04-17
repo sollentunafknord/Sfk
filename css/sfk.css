@@ -299,6 +299,15 @@
       .header-left img { height: 36px; }
       .header-title { font-size: 1.1rem; }
 
+      /* Paneller: mobilde tam genişlik */
+      #instellningarPanel,
+      #githubPanel {
+        left: 1rem !important;
+        right: 1rem !important;
+        min-width: unset !important;
+        top: 72px !important;
+      }
+
       /* Tab bar: yatay kaydırılabilir */
       .tabs {
         overflow-x: auto;
