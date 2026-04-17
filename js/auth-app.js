@@ -102,38 +102,37 @@ function showApp() {
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('appPage').style.display = 'block';
   const u = state.user;
-  document.getElementById('userBadge').textContent = u.full_name || u.username;
+  const displayName = u.full_name || u.username;
+  document.getElementById('userBadge').textContent = displayName;
+  const mobileUserBadge = document.getElementById('mobileUserBadge');
+  if (mobileUserBadge) mobileUserBadge.textContent = displayName;
   const rb = document.getElementById('roleBadge');
   rb.textContent = u.role === 'admin' ? 'Admin' : u.role === 'antrenor' ? 'Tränare' : u.role === 'klubbledare' ? 'Klubbledare' : 'Spelare';
   // Avatar göster
   const headerAvatar = document.getElementById('headerAvatar');
-  if (headerAvatar) {
-    if (u.avatar_url) {
-      headerAvatar.src = u.avatar_url;
-      headerAvatar.style.display = 'inline-block';
-    } else if (u.role === 'oyuncu' && u.player_id) {
-      // Oyuncu için MinFotboll'dan çek
-      fetch('/api/stats?action=mystats', {headers: authHeaders()})
-        .then(r => r.json())
-        .then(d => {
-          if (d.thumbnail) {
-            headerAvatar.src = d.thumbnail;
-            headerAvatar.style.display = 'inline-block';
-          }
-        }).catch(() => {});
-    } else if (u.minfotboll_member_id) {
-      // Antrenör / klubbledare için MinFotboll'dan çek
-      fetch('/api/admin?action=fetchavatar&memberId=' + u.minfotboll_member_id, {headers: authHeaders()})
-        .then(r => r.json())
-        .then(d => {
-          if (d.avatarUrl) {
-            headerAvatar.src = d.avatarUrl;
-            headerAvatar.style.display = 'inline-block';
-          }
-        }).catch(() => {});
-    }
+  function setAvatar(src) {
+    if (headerAvatar) { headerAvatar.src = src; headerAvatar.style.display = 'inline-block'; }
+    if (mobileAvatar) { mobileAvatar.src = src; mobileAvatar.style.display = 'inline-block'; }
+  }
+  if (u.avatar_url) {
+    setAvatar(u.avatar_url);
+  } else if (u.role === 'oyuncu' && u.player_id) {
+    fetch('/api/stats?action=mystats', {headers: authHeaders()})
+      .then(r => r.json())
+      .then(d => { if (d.thumbnail) setAvatar(d.thumbnail); })
+      .catch(() => {});
+  } else if (u.minfotboll_member_id) {
+    fetch('/api/admin?action=fetchavatar&memberId=' + u.minfotboll_member_id, {headers: authHeaders()})
+      .then(r => r.json())
+      .then(d => { if (d.avatarUrl) setAvatar(d.avatarUrl); })
+      .catch(() => {});
   }
   rb.className = 'role-badge role-' + u.role;
+  const mobileRoleBadge = document.getElementById('mobileRoleBadge');
+  if (mobileRoleBadge) { mobileRoleBadge.textContent = rb.textContent; mobileRoleBadge.className = rb.className; }
+  const mobileAvatar = document.getElementById('mobileAvatar');
+  const mobileRefreshBtn = document.getElementById('mobileRefreshBtn');
+  if (mobileRefreshBtn) mobileRefreshBtn.style.display = u.role === 'admin' ? 'block' : 'none';
 
   // Panel görünürlüğü
   document.getElementById('viewAdmin').style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'block' : 'none';

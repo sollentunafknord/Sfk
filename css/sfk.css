@@ -254,11 +254,71 @@
     .section-title { font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; letter-spacing: 0.5px; }
     .empty-state { text-align: center; padding: 3rem; color: var(--muted); }
 
+    /* HAMBURGER */
+    .hamburger-btn {
+      display: none;
+      background: none; border: none;
+      color: var(--text); font-size: 1.5rem;
+      cursor: pointer; padding: 0.3rem 0.5rem;
+      line-height: 1;
+    }
+
+    /* MOBILE DRAWER */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 64px; left: 0; right: 0;
+      background: var(--surface);
+      border-bottom: 2px solid var(--accent);
+      padding: 1rem;
+      z-index: 99;
+      flex-direction: column;
+      gap: 0.75rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu .user-badge,
+    .mobile-menu .role-badge { align-self: flex-start; }
+    .mobile-menu button { width: 100%; text-align: left; }
+    .mobile-menu-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 98;
+    }
+    .mobile-menu-overlay.open { display: block; }
+
     @media (max-width: 768px) {
       main { padding: 1rem; }
       .filter-bar { flex-direction: column; }
       .user-form { grid-template-columns: 1fr; }
       header { padding: 0 1rem; }
+
+      /* Header: sadece logo + hamburger */
+      .header-right { display: none; }
+      .hamburger-btn { display: block; }
+      .header-left img { height: 36px; }
+      .header-title { font-size: 1.1rem; }
+
+      /* Tab bar: yatay kaydırılabilir */
+      .tabs {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+        gap: 0;
+        scrollbar-width: none;
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab {
+        flex-shrink: 0;
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
     }
 
     /* OMKLÄDNINGSRUM STYLES */

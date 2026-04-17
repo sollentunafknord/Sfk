@@ -11,6 +11,22 @@ const state = {
   savedMatchIds: new Set(),
 };
 
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobileMenu');
+  const overlay = document.getElementById('mobileOverlay');
+  const btn = document.getElementById('hamburgerBtn');
+  const isOpen = menu.classList.contains('open');
+  menu.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  btn.textContent = isOpen ? '☰' : '✕';
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+  document.getElementById('mobileOverlay').classList.remove('open');
+  document.getElementById('hamburgerBtn').textContent = '☰';
+}
+
 function goHome() {
   const u = state.user;
   if (!u) return;

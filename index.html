@@ -42,10 +42,27 @@
       <span class="role-badge" id="roleBadge"></span>
       <button class="btn-refresh" onclick="refreshToken()" title="Förnya MinFotboll token" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.3rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.82rem;" id="refreshBtn">🔄 Förnya token</button>
       <button onclick="toggleInstellningar()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.3rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.82rem;">⚙️ Inställningar</button>
-
       <button class="btn-logout" onclick="doLogout()">Logga ut</button>
     </div>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Meny">☰</button>
   </header>
+
+  <!-- Mobil menü overlay -->
+  <div class="mobile-menu-overlay" id="mobileOverlay" onclick="closeMobileMenu()"></div>
+
+  <!-- Mobil menü drawer -->
+  <div class="mobile-menu" id="mobileMenu">
+    <div style="display:flex;align-items:center;gap:0.75rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border);">
+      <img id="mobileAvatar" src="" style="display:none;width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);" onerror="this.style.display='none'">
+      <div>
+        <span class="user-badge" id="mobileUserBadge"></span>
+        <span class="role-badge" id="mobileRoleBadge" style="display:inline-block;margin-left:0.4rem;"></span>
+      </div>
+    </div>
+    <button class="btn-refresh" onclick="refreshToken();closeMobileMenu()" title="Förnya MinFotboll token" id="mobileRefreshBtn" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);padding:0.5rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.9rem;text-align:left;">🔄 Förnya token</button>
+    <button onclick="toggleInstellningar();closeMobileMenu()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.9rem;text-align:left;">⚙️ Inställningar</button>
+    <button class="btn-logout" onclick="doLogout()" style="width:100%;text-align:left;padding:0.5rem 0.8rem;">Logga ut</button>
+  </div>
 
   <!-- GitHub Deploy Paneli -->
   <div id="githubPanel" style="display:none;position:fixed;top:70px;right:1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.4rem;z-index:1000;min-width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
