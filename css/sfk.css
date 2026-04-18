@@ -33,12 +33,31 @@
       60%     { transform: translateX(-5px); }
       80%     { transform: translateX(5px); }
     }
+    @keyframes heartBreath {
+      0%, 100% { transform: translate(-50%, -50%) scale(1);    opacity: 0.05; }
+      50%       { transform: translate(-50%, -50%) scale(1.18); opacity: 0.10; }
+    }
     .login-wrap {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       background: radial-gradient(ellipse at center, #0d1b35 0%, #0a0e1a 70%);
+      position: relative;
+      overflow: hidden;
+    }
+    .login-wrap::before {
+      content: '';
+      position: absolute;
+      width: 780px;
+      height: 780px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.06);
+      clip-path: path('M 390 140 C 390 109 342 62 280 62 C 156 62 62 188 62 312 C 62 498 234 622 390 730 C 546 622 718 498 718 312 C 718 188 624 62 500 62 C 438 62 390 109 390 140 Z');
+      animation: heartBreath 3.5s ease-in-out infinite;
+      pointer-events: none;
     }
     .login-box {
       background: var(--surface);
