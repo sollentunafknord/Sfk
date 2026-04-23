@@ -350,7 +350,6 @@ function populateCvLeagueFilter(matchDetails, prefix) {
     if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
   }));
   if (wrapEl) wrapEl.style.display = 'flex';
-  if (typeof initMultiDropdown === 'function') initMultiDropdown(prefix + 'CvLeagueBtn', prefix + 'CvLeagueList');
 }
 
 function setCvAllLeagues(prefix, checked) {

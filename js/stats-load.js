@@ -155,9 +155,9 @@ async function loadStatsTeamDropdown() {
 }
 
 async function onStatsTeamChange() {
-  // Takım değişince oyuncu filtresini güncelle
   const teamId = parseInt(document.getElementById('statsTeam')?.value) || null;
   await updateStatsPlayerFilter(teamId);
+  updateLeagueListByTeam();
 }
 
 async function updateStatsPlayerFilter(teamId) {
@@ -194,68 +194,70 @@ async function updateStatsPlayerFilter(teamId) {
 }
 
 async function loadLeagueFilters() {
-  // Stats takım dropdown'ını doldur
   await loadStatsTeamDropdown();
-
   try {
     const r = await fetch('/api/admin?action=savedmatches', {headers: authHeaders()});
     const matches = await r.json();
     if (!Array.isArray(matches)) return;
-    // Antrenör: sadece kendi takımlarının maçlarından liga listesi
-    let filteredMatches = matches;
-    if (state.user.role === 'antrenor' && window._activeTeamsCache && window._activeTeamsCache.length > 0) {
-      const allowedTeamIds = new Set(window._activeTeamsCache.map(t => String(t.team_id)));
-      const allowedTeamNames = window._activeTeamsCache.map(t => (t.team_name || '').toLowerCase());
-      const idFiltered = matches.filter(m =>
-        allowedTeamIds.has(String(m.team_id)) ||
-        allowedTeamIds.has(String(m.home_team_id)) ||
-        allowedTeamIds.has(String(m.away_team_id))
-      );
-      if (idFiltered.length > 0) {
-        filteredMatches = idFiltered;
-      } else {
-        filteredMatches = matches.filter(m => {
-          const home = (m.home_team || '').toLowerCase();
-          const away = (m.away_team || '').toLowerCase();
-          return allowedTeamNames.some(tn => tn && (home.includes(tn) || away.includes(tn)));
-        });
-        if (filteredMatches.length === 0) filteredMatches = matches;
-      }
-    }
-    const leagues = [...new Set(filteredMatches.map(m => m.league_name).filter(Boolean))].sort();
-
-    // Admin dropdown
-    const adminEl = document.getElementById('leagueFilterItems');
-    if (adminEl) {
-      if (leagues.length === 0) {
-        adminEl.innerHTML = '<div style="padding:0.5rem;color:var(--muted);font-size:0.82rem;">Inga ligor hittades</div>';
-      } else {
-        adminEl.innerHTML = leagues.map(l =>
-          `<label><input type="checkbox" class="league-filter" value="${l}" checked> ${l}</label>`
-        ).join('');
-        adminEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
-          const all = adminEl.querySelectorAll('input');
-          const checked = adminEl.querySelectorAll('input:checked');
-          const span = document.querySelector('#statsLeagueBtn span');
-          if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
-        }));
-      }
-    }
-
-    // Oyuncu dropdown
-    const oyuncuEl = document.getElementById('oyuncuLeagueFilterItems');
-    if (oyuncuEl) {
-      oyuncuEl.innerHTML = leagues.map(l =>
-        `<label><input type="checkbox" class="oyuncu-league-filter" value="${l}" checked> ${l}</label>`
-      ).join('');
-      oyuncuEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
-        const all = oyuncuEl.querySelectorAll('input');
-        const checked = oyuncuEl.querySelectorAll('input:checked');
-        const span = document.querySelector('#oyuncuLeagueBtn span');
-        if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
-      }));
-    }
+    window._allSavedMatchesCache = matches;
+    updateLeagueListByTeam();
   } catch(e) {}
+}
+
+// Seçili takıma göre lig listesini günceller — takım dropdown değişince de çağrılır
+function updateLeagueListByTeam() {
+  const matches = window._allSavedMatchesCache;
+  if (!matches) return;
+
+  const selectedTeamId = parseInt(document.getElementById('statsTeam')?.value) || null;
+  let filteredMatches = matches;
+
+  if (selectedTeamId && window._activeTeamsCache) {
+    // Belirli bir takım seçili — sadece o takımın maçları
+    const team = window._activeTeamsCache.find(t => t.team_id === selectedTeamId);
+    if (team) {
+      const tn = (team.team_name || '').toLowerCase();
+      // P16U gibi özel alias'lar
+      const sfkAliases = { 'p16u': ['sollentuna utveckling', 'p16 u', 'p16u'] };
+      const aliasKey = Object.keys(sfkAliases).find(k => tn.includes(k));
+      const terms = aliasKey ? sfkAliases[aliasKey] : [tn];
+      const byName = matches.filter(m => {
+        const home = (m.home_team || '').toLowerCase();
+        const away = (m.away_team || '').toLowerCase();
+        return terms.some(t => home.includes(t) || away.includes(t));
+      });
+      if (byName.length > 0) filteredMatches = byName;
+    }
+  } else if (!selectedTeamId && state.user.role === 'antrenor' && window._activeTeamsCache && window._activeTeamsCache.length > 0) {
+    // Antrenör + "Alla lag" — sadece kendi takımlarının maçları
+    const teamNames = window._activeTeamsCache.map(t => (t.team_name || '').toLowerCase());
+    const byName = matches.filter(m => {
+      const home = (m.home_team || '').toLowerCase();
+      const away = (m.away_team || '').toLowerCase();
+      return teamNames.some(tn => tn && (home.includes(tn) || away.includes(tn)));
+    });
+    if (byName.length > 0) filteredMatches = byName;
+  }
+
+  const leagues = [...new Set(filteredMatches.map(m => m.league_name).filter(Boolean))].sort();
+  const adminEl = document.getElementById('leagueFilterItems');
+  if (!adminEl) return;
+
+  if (leagues.length === 0) {
+    adminEl.innerHTML = '<div style="padding:0.5rem;color:var(--muted);font-size:0.82rem;">Inga ligor hittades</div>';
+  } else {
+    adminEl.innerHTML = leagues.map(l =>
+      `<label><input type="checkbox" class="league-filter" value="${l}" checked> ${l}</label>`
+    ).join('');
+    adminEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
+      const all = adminEl.querySelectorAll('input');
+      const checked = adminEl.querySelectorAll('input:checked');
+      const span = document.querySelector('#statsLeagueBtn span');
+      if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
+    }));
+  }
+  const span = document.querySelector('#statsLeagueBtn span');
+  if (span) span.textContent = 'Alla ligor';
 }
 
 function setAllPlayers(checked) {
@@ -509,6 +511,8 @@ function initMultiDropdown(btnId, listId) {
 document.addEventListener('DOMContentLoaded', () => {
   initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
   initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
+  initMultiDropdown('adminCvLeagueBtn', 'adminCvLeagueList');
+  initMultiDropdown('oyuncuCvLeagueBtn', 'oyuncuCvLeagueList');
 });
 
 // ===================== DASHBOARD =====================
