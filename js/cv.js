@@ -67,6 +67,8 @@ async function loadCvForPlayer(playerId) {
   if (!playerId) return;
   const content = document.getElementById('adminCvContent');
   const printBtn = document.getElementById('cvPrintBtn');
+  const wrapEl = document.getElementById('adminCvLeagueFilterWrap');
+  if (wrapEl) wrapEl.style.display = 'none';
   content.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 0.5rem;"></div>Laddar CV...</div>';
   try {
     // CV verisi ve videolar paralel çek
@@ -77,6 +79,8 @@ async function loadCvForPlayer(playerId) {
     const d = await cvRes.json();
     const vd = await vidRes.json();
     d.videos = (vd.videos || []);
+    window._lastAdminCvData = d;
+    populateCvLeagueFilter(d.matchDetails, 'admin');
     content.innerHTML = renderCv(d);
     if (printBtn) printBtn.style.display = 'inline-block';
     // Highlights güncelleme butonu
@@ -93,6 +97,8 @@ async function loadCvForPlayer(playerId) {
 async function loadOyuncuCv() {
   const content = document.getElementById('oyuncuCvContent');
   if (content.dataset.loaded) return;
+  const wrapEl = document.getElementById('oyuncuCvLeagueFilterWrap');
+  if (wrapEl) wrapEl.style.display = 'none';
   content.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto 0.5rem;"></div>Laddar CV...</div>';
   try {
     const playerId = state.user.player_id;
@@ -105,6 +111,8 @@ async function loadOyuncuCv() {
     const vd = await vidRes.json();
     if (d.error) { content.innerHTML = '<div class="empty-state">Fel: ' + d.error + '</div>'; return; }
     d.videos = vd.videos || [];
+    window._lastOyuncuCvData = d;
+    populateCvLeagueFilter(d.matchDetails, 'oyuncu');
     content.innerHTML = renderCv(d);
     content.dataset.loaded = '1';
     // Highlights güncelleme butonu
@@ -142,12 +150,28 @@ function buildSeasonsFromMatches(matches) {
   }));
 }
 
-function renderCv(d) {
+function renderCv(d, leagueFilter) {
   if (!d || d.error) return '<div class="empty-state">Ingen data hittades</div>';
 
-  const totals = d.totals || d;
-  const seasons = d.seasons || [];
+  let totals = d.totals || d;
+  let seasons = d.seasons || [];
   const videos = d.videos || [];
+
+  if (leagueFilter && leagueFilter.length > 0) {
+    const fm = (d.matchDetails || []).filter(m => leagueFilter.includes(m.leagueName));
+    seasons = buildSeasonsFromMatches(fm);
+    totals = { games: 0, starterGames: 0, minutesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 };
+    fm.forEach(m => {
+      totals.games++;
+      if (m.isStarter) totals.starterGames++;
+      totals.minutesPlayed += m.minutesPlayed || 0;
+      totals.goals += m.goals || 0;
+      totals.assists += m.assists || 0;
+      totals.yellowCards += m.yellowCards || 0;
+      totals.redCards += m.redCards || 0;
+    });
+    d = { ...d, matchDetails: fm };
+  }
   const sfkLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Sollentuna_FK_logo_%282022%29.svg/960px-Sollentuna_FK_logo_%282022%29.svg.png';
 
   // Sezon grafiği - max gol değeri
@@ -200,7 +224,7 @@ function renderCv(d) {
         : '');
   }
 
-  // Maç geçmişi
+  // Maç geçmişi (leagueFilter uygulandıysa d.matchDetails zaten filtrelenmiş)
   const matchDetails = d.matchDetails || [];
   function buildMatchRows(matches) {
     return matches.map(function(m) {
@@ -308,6 +332,55 @@ function renderCv(d) {
       <div>${new Date().toLocaleDateString('sv-SE')}</div>
     </div>
   </div>`;
+}
+
+function populateCvLeagueFilter(matchDetails, prefix) {
+  const leagues = [...new Set((matchDetails || []).map(m => m.leagueName).filter(Boolean))].sort();
+  const itemsEl = document.getElementById(prefix + 'CvLeagueFilterItems');
+  const wrapEl = document.getElementById(prefix + 'CvLeagueFilterWrap');
+  if (!itemsEl) return;
+  if (leagues.length === 0) { if (wrapEl) wrapEl.style.display = 'none'; return; }
+  itemsEl.innerHTML = leagues.map(l =>
+    `<label><input type="checkbox" class="${prefix}-cv-league-filter" value="${l}" checked> ${l}</label>`
+  ).join('');
+  itemsEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
+    const all = itemsEl.querySelectorAll('input');
+    const checked = itemsEl.querySelectorAll('input:checked');
+    const span = document.querySelector('#' + prefix + 'CvLeagueBtn span');
+    if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
+  }));
+  if (wrapEl) wrapEl.style.display = 'flex';
+  if (typeof initMultiDropdown === 'function') initMultiDropdown(prefix + 'CvLeagueBtn', prefix + 'CvLeagueList');
+}
+
+function setCvAllLeagues(prefix, checked) {
+  document.querySelectorAll('.' + prefix + '-cv-league-filter').forEach(cb => {
+    cb.checked = checked;
+    cb.dispatchEvent(new Event('change'));
+  });
+}
+
+function getSelectedCvLeagues(prefix) {
+  const checked = [...document.querySelectorAll('.' + prefix + '-cv-league-filter:checked')];
+  const all = document.querySelectorAll('.' + prefix + '-cv-league-filter');
+  if (checked.length === all.length) return null;
+  return checked.map(cb => cb.value);
+}
+
+function applyCvLeagueFilter() {
+  if (!window._lastAdminCvData) return;
+  const leagues = getSelectedCvLeagues('admin');
+  const content = document.getElementById('adminCvContent');
+  content.innerHTML = renderCv(window._lastAdminCvData, leagues);
+  setTimeout(() => document.querySelectorAll('.cv-season-fill').forEach(el => { el.style.width = el.dataset.w; }), 50);
+}
+
+function applyOyuncuCvLeagueFilter() {
+  if (!window._lastOyuncuCvData) return;
+  const leagues = getSelectedCvLeagues('oyuncu');
+  const content = document.getElementById('oyuncuCvContent');
+  content.innerHTML = renderCv(window._lastOyuncuCvData, leagues);
+  setTimeout(() => document.querySelectorAll('.cv-season-fill').forEach(el => { el.style.width = el.dataset.w; }), 50);
 }
 
 function printCv() {

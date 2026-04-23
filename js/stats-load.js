@@ -203,25 +203,43 @@ async function loadLeagueFilters() {
     if (!Array.isArray(matches)) return;
     // Antrenör: sadece kendi takımlarının maçlarından liga listesi
     let filteredMatches = matches;
-    if (state.user.role === 'antrenor' && window._activeTeamsCache) {
+    if (state.user.role === 'antrenor' && window._activeTeamsCache && window._activeTeamsCache.length > 0) {
       const allowedTeamIds = new Set(window._activeTeamsCache.map(t => String(t.team_id)));
-      filteredMatches = matches.filter(m => allowedTeamIds.has(String(m.team_id)) || allowedTeamIds.has(String(m.home_team_id)) || allowedTeamIds.has(String(m.away_team_id)));
+      const allowedTeamNames = window._activeTeamsCache.map(t => (t.team_name || '').toLowerCase());
+      const idFiltered = matches.filter(m =>
+        allowedTeamIds.has(String(m.team_id)) ||
+        allowedTeamIds.has(String(m.home_team_id)) ||
+        allowedTeamIds.has(String(m.away_team_id))
+      );
+      if (idFiltered.length > 0) {
+        filteredMatches = idFiltered;
+      } else {
+        filteredMatches = matches.filter(m => {
+          const home = (m.home_team || '').toLowerCase();
+          const away = (m.away_team || '').toLowerCase();
+          return allowedTeamNames.some(tn => tn && (home.includes(tn) || away.includes(tn)));
+        });
+        if (filteredMatches.length === 0) filteredMatches = matches;
+      }
     }
     const leagues = [...new Set(filteredMatches.map(m => m.league_name).filter(Boolean))].sort();
-    
+
     // Admin dropdown
     const adminEl = document.getElementById('leagueFilterItems');
     if (adminEl) {
-      adminEl.innerHTML = leagues.map(l => 
-        `<label><input type="checkbox" class="league-filter" value="${l}" checked> ${l}</label>`
-      ).join('');
-      // Checkbox değişince label güncelle
-      adminEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
-        const all = adminEl.querySelectorAll('input');
-        const checked = adminEl.querySelectorAll('input:checked');
-        const span = document.querySelector('#statsLeagueBtn span');
-        if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
-      }));
+      if (leagues.length === 0) {
+        adminEl.innerHTML = '<div style="padding:0.5rem;color:var(--muted);font-size:0.82rem;">Inga ligor hittades</div>';
+      } else {
+        adminEl.innerHTML = leagues.map(l =>
+          `<label><input type="checkbox" class="league-filter" value="${l}" checked> ${l}</label>`
+        ).join('');
+        adminEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
+          const all = adminEl.querySelectorAll('input');
+          const checked = adminEl.querySelectorAll('input:checked');
+          const span = document.querySelector('#statsLeagueBtn span');
+          if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
+        }));
+      }
     }
 
     // Oyuncu dropdown
