@@ -232,8 +232,8 @@
             <div>
               <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.5px;">Liga</label>
               <div class="ms-dropdown">
-                <button class="ms-dropdown-btn" id="adminCvLeagueBtn"><span>Alla ligor</span></button>
-                <div class="ms-dropdown-list" id="adminCvLeagueList">
+                <button class="ms-dropdown-btn" id="adminCvLeagueBtn" onclick="cvDropdownToggle('adminCvLeagueList');event.stopPropagation()"><span>Alla ligor</span></button>
+                <div class="ms-dropdown-list" id="adminCvLeagueList" onclick="event.stopPropagation()">
                   <div class="ms-dropdown-actions">
                     <button onclick="setCvAllLeagues('admin',true)">Alla</button>
                     <button onclick="setCvAllLeagues('admin',false)">Ingen</button>
@@ -653,8 +653,8 @@
             <div>
               <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.5px;">Liga</label>
               <div class="ms-dropdown">
-                <button class="ms-dropdown-btn" id="oyuncuCvLeagueBtn"><span>Alla ligor</span></button>
-                <div class="ms-dropdown-list" id="oyuncuCvLeagueList">
+                <button class="ms-dropdown-btn" id="oyuncuCvLeagueBtn" onclick="cvDropdownToggle('oyuncuCvLeagueList');event.stopPropagation()"><span>Alla ligor</span></button>
+                <div class="ms-dropdown-list" id="oyuncuCvLeagueList" onclick="event.stopPropagation()">
                   <div class="ms-dropdown-actions">
                     <button onclick="setCvAllLeagues('oyuncu',true)">Alla</button>
                     <button onclick="setCvAllLeagues('oyuncu',false)">Ingen</button>

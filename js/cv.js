@@ -382,6 +382,18 @@ function applyOyuncuCvLeagueFilter() {
   setTimeout(() => document.querySelectorAll('.cv-season-fill').forEach(el => { el.style.width = el.dataset.w; }), 50);
 }
 
+function cvDropdownToggle(listId) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  const isOpen = list.classList.contains('open');
+  document.querySelectorAll('.ms-dropdown-list.open').forEach(l => l.classList.remove('open'));
+  if (!isOpen) list.classList.add('open');
+}
+
+document.addEventListener('click', function() {
+  document.querySelectorAll('#adminCvLeagueList, #oyuncuCvLeagueList').forEach(l => l.classList.remove('open'));
+});
+
 function printCv() {
   window.print();
 }

@@ -511,8 +511,6 @@ function initMultiDropdown(btnId, listId) {
 document.addEventListener('DOMContentLoaded', () => {
   initMultiDropdown('statsLeagueBtn', 'statsLeagueList');
   initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
-  initMultiDropdown('adminCvLeagueBtn', 'adminCvLeagueList');
-  initMultiDropdown('oyuncuCvLeagueBtn', 'oyuncuCvLeagueList');
 });
 
 // ===================== DASHBOARD =====================
