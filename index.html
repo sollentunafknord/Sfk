@@ -228,21 +228,12 @@
             </select>
           </div>
           <!-- Liga filtresi — oyuncu seçildikten sonra görünür -->
-          <div id="adminCvLeagueFilterWrap" style="display:none;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;">
-            <div>
-              <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.5px;">Liga</label>
-              <div class="ms-dropdown">
-                <button class="ms-dropdown-btn" id="adminCvLeagueBtn" onclick="cvDropdownToggle('adminCvLeagueList');event.stopPropagation()"><span>Alla ligor</span></button>
-                <div class="ms-dropdown-list" id="adminCvLeagueList" onclick="event.stopPropagation()">
-                  <div class="ms-dropdown-actions">
-                    <button onclick="setCvAllLeagues('admin',true)">Alla</button>
-                    <button onclick="setCvAllLeagues('admin',false)">Ingen</button>
-                  </div>
-                  <div id="adminCvLeagueFilterItems"></div>
-                </div>
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="applyCvLeagueFilter()">🔄 Uppdatera CV</button>
+          <div id="adminCvLeagueFilterWrap" style="display:none;">
+            <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.5px;">Liga</label>
+            <select id="adminCvLeagueSelect" onchange="applyCvLeagueFilter()"
+              style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.9rem;border-radius:8px;font-size:0.95rem;min-width:200px;">
+              <option value="">Alla ligor</option>
+            </select>
           </div>
           <button onclick="printCv()" class="btn btn-secondary" id="cvPrintBtn" style="display:none;">🖨️ Skriv ut / Spara PDF</button>
           <button id="fetchHighlightsBtn" class="btn" style="display:none;background:var(--surface2);border:1px solid var(--border);color:var(--accent);">🔄 Uppdatera highlights</button>
@@ -649,21 +640,12 @@
       <div id="oyuncuViewCv" style="display:none;">
         <div style="display:flex;align-items:flex-end;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
           <!-- Liga filtresi — CV yüklendikten sonra görünür -->
-          <div id="oyuncuCvLeagueFilterWrap" style="display:none;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;">
-            <div>
-              <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.5px;">Liga</label>
-              <div class="ms-dropdown">
-                <button class="ms-dropdown-btn" id="oyuncuCvLeagueBtn" onclick="cvDropdownToggle('oyuncuCvLeagueList');event.stopPropagation()"><span>Alla ligor</span></button>
-                <div class="ms-dropdown-list" id="oyuncuCvLeagueList" onclick="event.stopPropagation()">
-                  <div class="ms-dropdown-actions">
-                    <button onclick="setCvAllLeagues('oyuncu',true)">Alla</button>
-                    <button onclick="setCvAllLeagues('oyuncu',false)">Ingen</button>
-                  </div>
-                  <div id="oyuncuCvLeagueFilterItems"></div>
-                </div>
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="applyOyuncuCvLeagueFilter()">🔄 Uppdatera CV</button>
+          <div id="oyuncuCvLeagueFilterWrap" style="display:none;">
+            <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;text-transform:uppercase;letter-spacing:0.5px;">Liga</label>
+            <select id="oyuncuCvLeagueSelect" onchange="applyOyuncuCvLeagueFilter()"
+              style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.9rem;border-radius:8px;font-size:0.95rem;min-width:200px;">
+              <option value="">Alla ligor</option>
+            </select>
           </div>
           <div style="margin-left:auto;display:flex;gap:0.5rem;">
             <button onclick="printCv()" class="btn btn-secondary">🖨️ Skriv ut / Spara PDF</button>

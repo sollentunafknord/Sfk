@@ -336,34 +336,19 @@ function renderCv(d, leagueFilter) {
 
 function populateCvLeagueFilter(matchDetails, prefix) {
   const leagues = [...new Set((matchDetails || []).map(m => m.leagueName).filter(Boolean))].sort();
-  const itemsEl = document.getElementById(prefix + 'CvLeagueFilterItems');
+  const selectEl = document.getElementById(prefix + 'CvLeagueSelect');
   const wrapEl = document.getElementById(prefix + 'CvLeagueFilterWrap');
-  if (!itemsEl) return;
+  if (!selectEl) return;
   if (leagues.length === 0) { if (wrapEl) wrapEl.style.display = 'none'; return; }
-  itemsEl.innerHTML = leagues.map(l =>
-    `<label><input type="checkbox" class="${prefix}-cv-league-filter" value="${l}" checked> ${l}</label>`
-  ).join('');
-  itemsEl.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => {
-    const all = itemsEl.querySelectorAll('input');
-    const checked = itemsEl.querySelectorAll('input:checked');
-    const span = document.querySelector('#' + prefix + 'CvLeagueBtn span');
-    if (span) span.textContent = checked.length === all.length ? 'Alla ligor' : checked.length === 0 ? 'Ingen vald' : `${checked.length} ligor valda`;
-  }));
-  if (wrapEl) wrapEl.style.display = 'flex';
-}
-
-function setCvAllLeagues(prefix, checked) {
-  document.querySelectorAll('.' + prefix + '-cv-league-filter').forEach(cb => {
-    cb.checked = checked;
-    cb.dispatchEvent(new Event('change'));
-  });
+  selectEl.innerHTML = '<option value="">Alla ligor</option>' +
+    leagues.map(l => `<option value="${l}">${l}</option>`).join('');
+  if (wrapEl) wrapEl.style.display = 'block';
 }
 
 function getSelectedCvLeagues(prefix) {
-  const checked = [...document.querySelectorAll('.' + prefix + '-cv-league-filter:checked')];
-  const all = document.querySelectorAll('.' + prefix + '-cv-league-filter');
-  if (checked.length === all.length) return null;
-  return checked.map(cb => cb.value);
+  const select = document.getElementById(prefix + 'CvLeagueSelect');
+  if (!select || !select.value) return null;
+  return [select.value];
 }
 
 function applyCvLeagueFilter() {
@@ -381,18 +366,6 @@ function applyOyuncuCvLeagueFilter() {
   content.innerHTML = renderCv(window._lastOyuncuCvData, leagues);
   setTimeout(() => document.querySelectorAll('.cv-season-fill').forEach(el => { el.style.width = el.dataset.w; }), 50);
 }
-
-function cvDropdownToggle(listId) {
-  const list = document.getElementById(listId);
-  if (!list) return;
-  const isOpen = list.classList.contains('open');
-  document.querySelectorAll('.ms-dropdown-list.open').forEach(l => l.classList.remove('open'));
-  if (!isOpen) list.classList.add('open');
-}
-
-document.addEventListener('click', function() {
-  document.querySelectorAll('#adminCvLeagueList, #oyuncuCvLeagueList').forEach(l => l.classList.remove('open'));
-});
 
 function printCv() {
   window.print();
