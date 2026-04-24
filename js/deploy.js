@@ -76,31 +76,25 @@ function bumpVersion(current) {
   return `v${m[1]}.${parseInt(m[2]) + 1}`;
 }
 
-function generateVersionJsContent(version, date, notes, prevChangelog) {
-  const entry = { version, date, notes };
-  const history = [entry, ...(prevChangelog || [])].slice(0, 30);
-  const lines = history.map(e => `  { version: '${e.version}', date: '${e.date}', notes: '${(e.notes||'').replace(/'/g,"\\'")}' }`).join(',\n');
-  return `// ===================== VERSION INFO =====================\n// Autogenereras vid deploy – redigera ej manuellt\n// ========================================================\n\nconst SFK_VERSION = '${version}';\nconst SFK_BUILD_DATE = '${date}';\nconst SFK_CHANGELOG = [\n${lines}\n];\n`;
+function generateVersionJsContent(version, date) {
+  return `// ===================== VERSION INFO =====================\n// Autogenereras vid deploy – redigera ej manuellt\n// ========================================================\n\nconst SFK_VERSION = '${version}';\nconst SFK_BUILD_DATE = '${date}';\n`;
 }
 
-function showChangelogModal() {
-  const modal = document.getElementById('changelogModal');
-  const content = document.getElementById('changelogContent');
-  if (!modal || !content) return;
-  const log = (typeof SFK_CHANGELOG !== 'undefined') ? SFK_CHANGELOG : [];
-  if (log.length === 0) {
-    content.innerHTML = '<p style="color:var(--muted)">Ingen logg tillgänglig.</p>';
-  } else {
-    content.innerHTML = log.map(e => `
-      <div style="padding:0.6rem 0;border-bottom:1px solid var(--border);">
-        <div style="display:flex;gap:0.75rem;align-items:baseline;">
-          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--accent);min-width:3.5rem;">${e.version}</span>
-          <span style="font-size:0.75rem;color:var(--muted);">${e.date}</span>
-        </div>
-        <div style="margin-top:0.2rem;color:var(--text);">${e.notes || '—'}</div>
-      </div>`).join('');
-  }
-  modal.style.display = 'flex';
+async function githubAppendChangelog(version, date, notes) {
+  // Fetch existing changelog.txt content
+  let existing = '';
+  try {
+    const r = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/changelog.txt?ref=${GITHUB_BRANCH}`, {
+      headers: { 'Authorization': `token ${localStorage.getItem('sfk_gh_token')}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (r.ok) {
+      const d = await r.json();
+      existing = atob(d.content.replace(/\n/g, ''));
+    }
+  } catch(e) {}
+  const newLine = `${version} | ${date} | ${notes}\n`;
+  const updated = newLine + existing;
+  await githubPushFile('changelog.txt', updated);
 }
 
 async function doDeploy() {
@@ -124,25 +118,20 @@ async function doDeploy() {
     const newVersion = bumpVersion(currentVersion);
     const today = new Date().toISOString().slice(0, 10);
     const notes = (document.getElementById('deployNotes')?.value || '').trim() || `Deploy ${newVersion}`;
-    const prevChangelog = (typeof SFK_CHANGELOG !== 'undefined') ? SFK_CHANGELOG : [];
 
-    // Push version.js first
     msg.textContent = `Genererar ${newVersion}...`;
-    const versionContent = generateVersionJsContent(newVersion, today, notes, prevChangelog);
+    const versionContent = generateVersionJsContent(newVersion, today);
     await githubPushFile('js/version.js', versionContent);
 
-    // Push index.html — at this point window.SFK_VERSION is still old; that's fine,
-    // Vercel will serve the new version.js which is loaded first.
+    msg.textContent = 'Uppdaterar changelog.txt...';
+    await githubAppendChangelog(newVersion, today, notes);
+
     msg.textContent = 'Pushar index.html...';
     const fileContent = document.documentElement.outerHTML;
     await githubPushFile('index.html', fileContent);
 
-    // Update local state so badge reflects new version immediately
-    if (typeof window !== 'undefined') {
-      window.SFK_VERSION = newVersion;
-      window.SFK_BUILD_DATE = today;
-      window.SFK_CHANGELOG = [{ version: newVersion, date: today, notes }, ...prevChangelog].slice(0, 30);
-    }
+    window.SFK_VERSION = newVersion;
+    window.SFK_BUILD_DATE = today;
     const badge = document.getElementById('sfkVersionBadge');
     if (badge) badge.textContent = newVersion;
     const buildDate = document.getElementById('sfkBuildDate');
