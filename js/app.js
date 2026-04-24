@@ -70,6 +70,24 @@ function oyuncuTab(tab) {
   if (tab === 'cv') loadOyuncuCv();
 }
 
+// Versionsinfo på login + deploy panel
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof SFK_VERSION !== 'undefined') {
+    const badge = document.getElementById('sfkVersionBadge');
+    if (badge) badge.textContent = SFK_VERSION;
+    const buildDate = document.getElementById('sfkBuildDate');
+    if (buildDate) buildDate.textContent = SFK_BUILD_DATE || '';
+  }
+});
+
+function _updateNextVersionLabel() {
+  const lbl = document.getElementById('nextVersionLabel');
+  if (!lbl) return;
+  const cur = (typeof SFK_VERSION !== 'undefined') ? SFK_VERSION : 'v4.0';
+  const m = cur.match(/^v(\d+)\.(\d+)$/);
+  if (m) lbl.textContent = `${cur} → v${m[1]}.${parseInt(m[2])+1}`;
+}
+
 // Flatpickr - İsveçce takvim
 document.addEventListener('DOMContentLoaded', () => {
   const dateConfig = {
