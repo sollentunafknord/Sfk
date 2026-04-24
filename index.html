@@ -26,6 +26,21 @@
       <button type="submit" class="btn-login">Logga in</button>
     </form>
     <div class="login-error" id="loginErr"></div>
+    <div style="margin-top:0.75rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;">
+      <span id="sfkVersionBadge" onclick="showChangelogModal()" style="font-size:0.72rem;color:var(--muted);cursor:pointer;border:1px solid var(--border);border-radius:4px;padding:0.15rem 0.5rem;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;" title="Visa ändringslogg">v4.1</span>
+      <span id="sfkBuildDate" style="font-size:0.68rem;color:var(--muted);opacity:0.6;"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Ändringslogg Modal -->
+<div id="changelogModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:480px;width:90%;max-height:70vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.6);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;">📋 Ändringslogg</span>
+      <button onclick="document.getElementById('changelogModal').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;">✕</button>
+    </div>
+    <div id="changelogContent" style="font-size:0.85rem;"></div>
   </div>
 </div>
 
@@ -90,8 +105,20 @@
     <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;padding:0.5rem;background:rgba(0,212,255,0.05);border-radius:6px;border:1px solid rgba(0,212,255,0.1);">
       💡 API-filer (stats.js, admin.js etc.) behöver pushas manuellt via PowerShell om de ändrats.
     </div>
+    <div style="margin-bottom:0.75rem;">
+      <label style="font-size:0.75rem;color:var(--muted);display:block;margin-bottom:0.3rem;">📝 Vad ändrades? (versionsnotering)</label>
+      <textarea id="deployNotes" placeholder="T.ex. Ny funktion: exportera statistik..." rows="2"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.83rem;resize:vertical;box-sizing:border-box;font-family:inherit;"></textarea>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;font-size:0.85rem;">
+      <div style="display:flex;align-items:center;gap:0.5rem;color:var(--green);font-weight:600;">
+        <span>📋</span> js/version.js
+        <span id="nextVersionLabel" style="margin-left:auto;color:var(--accent);font-size:0.78rem;font-weight:400;"></span>
+      </div>
+      <div style="color:var(--muted);font-size:0.75rem;margin-top:0.25rem;">Versionsfil genereras och pushas automatiskt</div>
+    </div>
     <div id="deployMsg" style="font-size:0.82rem;min-height:1.2rem;margin-bottom:0.75rem;"></div>
-    <button onclick="doDeploy()" id="deployRunBtn" class="btn btn-primary" style="width:100%;font-size:1rem;">🚀 Push index.html → GitHub</button>
+    <button onclick="doDeploy()" id="deployRunBtn" class="btn btn-primary" style="width:100%;font-size:1rem;">🚀 Push till GitHub</button>
   </div>
 
   <!-- İnställningar paneli -->
@@ -659,6 +686,7 @@
   </main>
 </div>
 
+<script src="/js/version.js"></script>
 <script src="/js/players.js"></script>
 <script src="/js/stats-load.js"></script>
 <script src="/js/stats-render.js"></script>
