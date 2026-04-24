@@ -194,9 +194,9 @@ function renderCv(d, leagueFilter) {
     </div>`;
   }).join('') : '<div style="color:var(--muted);font-size:0.9rem;">Ingen säsongsdata</div>';
 
-  var videosHtml;
+  var videosSectionHtml = '';
   if (videos.length) {
-    videosHtml = '<div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;">' + videos.length + ' höjdpunkter registrerade</div>'
+    var videosHtml = '<div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;">' + videos.length + ' höjdpunkter registrerade</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem;align-items:start;">'
       + videos.map(function(v) {
           var infoType = (v.infoText || '').toLowerCase().includes('assist') ? '🎯' : '⚽';
@@ -217,11 +217,7 @@ function renderCv(d, leagueFilter) {
             + '</a>';
         }).join('')
       + '</div>';
-  } else {
-    videosHtml = '<div style="color:var(--muted);font-size:0.88rem;">Inga höjdpunkter sparade ännu.</div>'
-      + (state.user && (state.user.role === 'admin' || state.user.role === 'antrenor')
-        ? '<div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted);">Gå till MinFotboll → Spelarens höjdpunkter → kör saveHighlightsFromDOM() i konsolen</div>'
-        : '');
+    videosSectionHtml = '<div class="cv-section"><div class="cv-section-title">🎥 Videohöjdpunkter</div>' + videosHtml + '</div>';
   }
 
   // Maç geçmişi (leagueFilter uygulandıysa d.matchDetails zaten filtrelenmiş)
@@ -292,7 +288,7 @@ function renderCv(d, leagueFilter) {
         </div>
       </div>
       <div style="text-align:right;color:var(--muted);font-size:0.8rem;">
-        <div>📅 ${new Date().toLocaleDateString('sv-SE', {year:'numeric',month:'long'})}</div>
+        <div>📅 ${new Date().toLocaleDateString('sv-SE', {day:'numeric',month:'long',year:'numeric'})}</div>
       </div>
     </div>
 
@@ -322,10 +318,7 @@ function renderCv(d, leagueFilter) {
       ${matchHistoryHtml}
     </div>
 
-    <div class="cv-section">
-      <div class="cv-section-title">🎥 Videohöjdpunkter</div>
-      ${videosHtml}
-    </div>
+    ${videosSectionHtml}
 
     <div class="cv-footer">
       <div>Sollentuna FK · Spelarstatistik</div>
