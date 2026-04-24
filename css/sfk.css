@@ -453,7 +453,9 @@
       header, .tabs, .filter-bar, .status-bar, .error-box,
       #instellningarPanel, .btn-logout, #refreshBtn,
       [onclick*="toggleInstellningar"], .cv-footer button,
-      #cvPrintBtn, .btn.btn-secondary { display: none !important; }
+      #cvPrintBtn, .btn.btn-secondary,
+      #adminCvLeagueFilterWrap, #oyuncuCvLeagueFilterWrap,
+      #fetchHighlightsBtn, #oyuncuFetchHighlightsBtn { display: none !important; }
       .cv-player-select-wrap { display: none !important; }
       main { padding: 0 !important; max-width: 100% !important; }
       .cv-wrapper { border: none !important; border-radius: 0 !important; max-width: 100% !important; }
