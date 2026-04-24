@@ -456,7 +456,7 @@
       #cvPrintBtn, .btn.btn-secondary,
       #adminCvLeagueFilterWrap, #oyuncuCvLeagueFilterWrap,
       #fetchHighlightsBtn, #oyuncuFetchHighlightsBtn { display: none !important; }
-      .cv-player-select-wrap { display: none !important; }
+      .cv-player-select-wrap, .cv-controls { display: none !important; }
       main { padding: 0 !important; max-width: 100% !important; }
       .cv-wrapper { border: none !important; border-radius: 0 !important; max-width: 100% !important; }
       .cv-header { background: #f0f4ff !important; border-bottom: 3px solid #0066cc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
