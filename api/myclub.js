@@ -68,18 +68,17 @@ module.exports = async (req, res) => {
 
   // ── Aktiviteler listesi ──────────────────────────────
   if (action === 'activities') {
-    const from = req.query.from || new Date().toISOString().slice(0,10);
-    const to   = req.query.to   || new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,10);
-    const params = new URLSearchParams({
-      limit: 'null',
-      search_start_day: from,
-      search_end_day:   to,
-      open_activity:    'true',
-    });
-    const r = await myClubGet(memberId, `/calendar/?${params}`);
-    if (r.status !== 200) return res.status(r.status).json({ error: 'MyClub API fel', status: r.status });
-    const list = Array.isArray(r.data) ? r.data : (r.data?.results || r.data?.activities || []);
-    return res.status(200).json({ activities: list });
+    try {
+      const from = req.query.from || new Date().toISOString().slice(0,10);
+      const to   = req.query.to   || new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,10);
+      const qs = `limit=null&search_start_day=${from}&search_end_day=${to}&open_activity=true`;
+      const r = await myClubGet(memberId, `/calendar/?${qs}`);
+      if (r.status !== 200) return res.status(200).json({ error: `MyClub svarade ${r.status}`, activities: [] });
+      const list = Array.isArray(r.data) ? r.data : (r.data?.results || r.data?.activities || []);
+      return res.status(200).json({ activities: list });
+    } catch(e) {
+      return res.status(200).json({ error: e.message, activities: [] });
+    }
   }
 
   // ── Tek aktivite detayı (närvaro listesi) ───────────
