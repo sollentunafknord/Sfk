@@ -6,8 +6,8 @@
 const https = require('https');
 const crypto = require('crypto');
 
-const MYCLUB_TOKEN     = process.env.MYCLUB_TOKEN;
-const MYCLUB_MEMBER_ID = process.env.MYCLUB_MEMBER_ID;
+const MYCLUB_TOKEN     = (process.env.MYCLUB_TOKEN || '').trim();
+const MYCLUB_MEMBER_ID = (process.env.MYCLUB_MEMBER_ID || '').trim();
 const JWT_SECRET       = process.env.JWT_SECRET || 'sfk2026gizliAnahtar!';
 
 function verifyToken(token) {
