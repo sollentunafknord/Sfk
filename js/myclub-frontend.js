@@ -2,24 +2,6 @@
 
 let _myclubActivities = [];
 
-function showMyclubPage() {
-  document.getElementById('viewAdmin').style.display = 'none';
-  document.getElementById('viewOyuncu').style.display = 'none';
-  document.getElementById('viewMyclub').style.display = 'block';
-  closeMobileMenu();
-  if (!_myclubActivities.length) loadMyclubActivities();
-}
-
-function hideMyclubPage() {
-  document.getElementById('viewMyclub').style.display = 'none';
-  const u = state.user;
-  if (u.role === 'oyuncu') {
-    document.getElementById('viewOyuncu').style.display = 'block';
-  } else {
-    document.getElementById('viewAdmin').style.display = 'block';
-  }
-}
-
 async function loadMyclubActivities() {
   const from = document.getElementById('myclubFrom')?.value || new Date().toISOString().slice(0,10);
   const to   = document.getElementById('myclubTo')?.value   || new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,10);
