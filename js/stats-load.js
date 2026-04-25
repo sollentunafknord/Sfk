@@ -520,101 +520,115 @@ async function loadDashboard() {
   el.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div>';
 
   try {
-    const today = new Date().toISOString().slice(0, 10);
-    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const today    = new Date().toISOString().slice(0, 10);
+    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-    // Paralel çek — arenagames MinFotboll'dan canlı maç listesi getirir
-    const [matchesRes, roomsRes, usersRes, rosterRes] = await Promise.all([
-      fetch('/api/admin?action=arenagames&dateFrom=' + today + '&dateTo=' + nextWeek, {headers: authHeaders()}),
-      fetch('/api/admin?action=getrooms', {headers: authHeaders()}),
+    const [matchesRes, usersRes, rosterRes, myclubRes] = await Promise.all([
+      fetch('/api/admin?action=arenagames&dateFrom=' + today + '&dateTo=' + nextMonth, {headers: authHeaders()}),
       fetch('/api/auth?action=users', {headers: authHeaders()}),
       fetch('/api/admin?action=activeroster', {headers: authHeaders()}),
+      fetch('/api/myclub?' + new URLSearchParams({action:'activities', from:today, to:nextMonth}), {headers: authHeaders()}),
     ]);
 
     const matchesData = await matchesRes.json().catch(() => ({}));
-    const rooms   = await roomsRes.json().catch(() => []);
-    const users   = await usersRes.json().catch(() => []);
-    const roster  = await rosterRes.json().catch(() => []);
+    const users       = await usersRes.json().catch(() => []);
+    const roster      = await rosterRes.json().catch(() => []);
+    const myclubData  = await myclubRes.json().catch(() => ({}));
 
-    // arenagames {count, games} formatında döner
-    const allMatches = Array.isArray(matchesData) ? matchesData : (matchesData.games || []);
-    const upcomingMatches = allMatches.slice(0, 5);
-    const totalPlayers    = Array.isArray(roster) ? roster.filter(p => p.type !== 'staff').length : 0;
-    const totalUsers      = Array.isArray(users) ? users.length : 0;
+    const allMatches     = Array.isArray(matchesData) ? matchesData : (matchesData.games || []);
+    const upcomingMatches = allMatches.slice(0, 8);
+    const totalPlayers   = Array.isArray(roster) ? roster.filter(p => p.type !== 'staff').length : 0;
+    const totalUsers     = Array.isArray(users) ? users.length : 0;
 
-    // Oda ataması yapılmamış maçları bul
-    const assignedGameIds = new Set(Array.isArray(rooms) ? rooms.map(r => r.game_id) : []);
-    const missingRooms = upcomingMatches.filter(m => !assignedGameIds.has(m.gameId || m.game_id));
+    // MyClub aktivitelerini tarihe göre indexle (sadece maçlar)
+    const myclubActivities = myclubData.activities || [];
+    const myclubByDate = {};
+    myclubActivities.forEach(a => {
+      const day = a.day || (a.start || '').slice(0, 10);
+      const type = (a.activity_type_name || a.activity_type || '').toLowerCase();
+      if (day && type.includes('match')) {
+        if (!myclubByDate[day]) myclubByDate[day] = [];
+        myclubByDate[day].push(a);
+      }
+    });
 
-    // MyClub verisini bekle
-    const myClubHtml = await _dashMyClub();
+    // Maç kartları HTML
+    const matchCards = upcomingMatches.length === 0
+      ? '<div class="empty-state">Inga kommande matcher</div>'
+      : upcomingMatches.map(m => {
+          const dateVal  = (m.gameDate || m.game_date || '').slice(0, 10);
+          const dateLabel = dateVal ? new Date(dateVal + 'T12:00:00').toLocaleDateString('sv-SE', {weekday:'long', day:'numeric', month:'long'}) : '—';
+          const home     = m.homeTeam || m.home_team || '—';
+          const away     = m.awayTeam || m.away_team || '—';
+          const league   = m.leagueName || m.league_name || '';
+          const time     = (m.gameDate || m.game_date || '').slice(11, 16) || '';
+          const myclubMatch = (myclubByDate[dateVal] || [])[0];
+          const invId    = myclubMatch ? (myclubMatch.invitation_id || myclubMatch.id) : null;
+
+          const narvBtn = invId
+            ? '<button onclick="dashLoadNarvaroCard(\'' + invId + '\',this)" style="font-size:0.78rem;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);color:var(--accent);padding:0.25rem 0.7rem;border-radius:5px;cursor:pointer;margin-top:0.5rem;">Visa närvaro</button>'
+            : '';
+
+          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:0.75rem;">' +
+            '<div style="display:flex;align-items:baseline;gap:0.75rem;flex-wrap:wrap;">' +
+              '<span style="font-size:0.8rem;color:var(--muted);min-width:130px;">' + dateLabel + (time ? ' · ' + time : '') + '</span>' +
+              '<span style="font-weight:700;font-size:1rem;">' + home + ' <span style="color:var(--muted);font-weight:400;">vs</span> ' + away + '</span>' +
+              (league ? '<span style="font-size:0.75rem;color:var(--accent);background:rgba(0,212,255,0.08);border-radius:4px;padding:2px 6px;">' + league + '</span>' : '') +
+            '</div>' +
+            narvBtn +
+            '<div class="dash-narv-result" style="margin-top:0.5rem;"></div>' +
+          '</div>';
+        }).join('');
 
     el.innerHTML =
-      // Üst kartlar
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:2rem;">' +
         _dashCard('⚽', upcomingMatches.length, 'Kommande matcher', 'var(--accent)') +
         _dashCard('👥', totalPlayers, 'Aktiva spelare', 'var(--green)') +
         _dashCard('👤', totalUsers, 'Användare', 'var(--yellow)') +
       '</div>' +
-
-      // MyClub müsaitlik bölümü
-      myClubHtml +
-
-      // Yaklaşan maçlar
-      '<div style="margin-bottom:2rem;">' +
-        '<div class="section-title">📅 Kommande matcher</div>' +
-        (upcomingMatches.length === 0
-          ? '<div class="empty-state">Inga kommande matcher</div>'
-          : '<div class="table-wrap"><table><thead><tr><th>Datum</th><th>Hemmalag</th><th>Bortalag</th><th>Liga</th></tr></thead><tbody>' +
-            upcomingMatches.map(m => {
-              const dateVal = m.gameDate || m.game_date || '';
-              const d = dateVal ? new Date(dateVal).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'}) : '—';
-              return '<tr><td>' + d + '</td><td>' + (m.homeTeam||m.home_team||'—') + '</td><td>' + (m.awayTeam||m.away_team||'—') + '</td><td style="color:var(--muted);font-size:0.85rem;">' + (m.leagueName||m.league_name||'—') + '</td></tr>';
-            }).join('') +
-            '</tbody></table></div>') +
-      '</div>' +
-
-      '';
+      '<div class="section-title">📅 Kommande matcher</div>' +
+      '<div style="margin-bottom:2rem;">' + matchCards + '</div>';
 
   } catch(e) {
     el.innerHTML = '<div class="empty-state">Fel: ' + e.message + '</div>';
   }
 }
 
-async function _dashMyClub() {
+async function dashLoadNarvaroCard(invId, btn) {
+  const card = btn.closest('div[style]');
+  const resultEl = card.querySelector('.dash-narv-result');
+  btn.disabled = true;
+  btn.textContent = '⏳';
   try {
-    const r = await fetch('/api/myclub?action=upcoming', {headers: authHeaders()});
-    const d = await r.json();
-    if (!d.events || d.events.length === 0) return '';
-    window._myClubEvents = d.events;
+    const r = await fetch('/api/myclub?' + new URLSearchParams({action:'attendance', id:invId}), {headers: authHeaders()});
+    const text = await r.text();
+    let d;
+    try { d = JSON.parse(text); } catch(e) { resultEl.innerHTML = '<span style="color:var(--red);font-size:0.8rem;">API-fel</span>'; btn.remove(); return; }
+    if (d.error) { resultEl.innerHTML = '<span style="color:var(--red);font-size:0.8rem;">' + d.error + '</span>'; btn.remove(); return; }
 
-    const rows = d.events.map(function(ev, idx) {
-      var dateStr = ev.start ? new Date(ev.start).toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '—';
-      return '<tr class="dash-row" onclick="openMyClubDetail(' + idx + ')">' +
-        '<td style="padding:0.6rem 0.8rem;white-space:nowrap;">' + dateStr + '</td>' +
-        '<td style="padding:0.6rem 0.8rem;font-weight:600;color:var(--accent);">' + (ev.title || '—') + '</td>' +
-        '<td style="padding:0.6rem 0.8rem;color:var(--muted);font-size:0.85rem;">' + (ev.calendar_name || '—') + '</td>' +
-        '<td style="padding:0.6rem 0.8rem;color:var(--green);font-weight:600;">&#x2705; ' + ev.accepted + '</td>' +
-        '<td style="padding:0.6rem 0.8rem;color:var(--red);font-weight:600;">&#x274C; ' + ev.denied + '</td>' +
-        '<td style="padding:0.6rem 0.8rem;color:var(--yellow);">&#x23F3; ' + ev.waiting + '</td>' +
-        '</tr>';
-    }).join('');
+    const accepted = d.players.filter(p => p.status === 'accepted');
+    const denied   = d.players.filter(p => p.status === 'denied');
+    const waiting  = d.players.filter(p => p.status === 'waiting');
 
-    return '<div style="margin-bottom:2rem;">' +
-      '<div class="section-title">&#x26BD; MyClub &#x2014; Kommande aktiviteter</div>' +
-      '<div class="table-wrap"><table>' +
-      '<thead><tr><th>Tid</th><th>Titel</th><th>Lag</th><th>Ja</th><th>Nej</th><th>Väntar</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table></div>' +
-      '<div id="myClubDetailPanel" style="display:none;margin-top:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.25rem;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">' +
-      '<div id="myClubDetailTitle" style="font-weight:700;font-size:1.1rem;color:var(--accent);"></div>' +
-      '<button onclick="closeMyClubDetail()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">&#x2715;</button>' +
-      '</div>' +
-      '<div id="myClubDetailContent"></div>' +
-      '</div>' +
+    function pill(players, color, icon) {
+      if (!players.length) return '';
+      const names = players.map(p => p.name + (p.comment ? ' (' + p.comment + ')' : '')).join(', ');
+      return '<div style="margin-top:0.4rem;">' +
+        '<span style="font-size:0.75rem;color:' + color + ';font-weight:600;">' + icon + ' ' + players.length + ' spelare:</span> ' +
+        '<span style="font-size:0.78rem;color:var(--text);">' + names + '</span></div>';
+    }
+
+    resultEl.innerHTML =
+      '<div style="border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.25rem;">' +
+        pill(accepted, 'var(--green)', '✓ Kommer') +
+        pill(waiting,  'var(--yellow)', '? Väntar') +
+        pill(denied,   'var(--red)',   '✗ Kommer ej') +
       '</div>';
+    btn.remove();
   } catch(e) {
-    return '';
+    resultEl.innerHTML = '<span style="color:var(--red);font-size:0.8rem;">Fel: ' + e.message + '</span>';
+    btn.disabled = false;
+    btn.textContent = 'Visa närvaro';
   }
 }
 
