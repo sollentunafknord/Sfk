@@ -204,6 +204,10 @@ function showApp() {
       initMultiDropdown('oyuncuLeagueBtn', 'oyuncuLeagueList');
     });
   }
+  // MyClub närvaro butonu
+  const myclubNavBtn = document.getElementById('myclubNavBtn');
+  if (myclubNavBtn) myclubNavBtn.style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'inline-block' : 'none';
+
   // Tab görünürlükleri
   const usersTab = document.getElementById('usersTab');
   if (usersTab) usersTab.style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'inline-block' : 'none';
