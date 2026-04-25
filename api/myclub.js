@@ -72,7 +72,8 @@ module.exports = async (req, res) => {
       const from = req.query.from || new Date().toISOString().slice(0,10);
       const to   = req.query.to   || new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,10);
       const qs = `limit=null&search_start_day=${from}&search_end_day=${to}&open_activity=true`;
-      const r = await myClubGet(memberId, `/calendar/?${qs}`);
+      // Try both calendar paths; member-admin/{memberId}/activities/calendar/ is the confirmed path
+      const r = await myClubGet(memberId, `/activities/calendar/?${qs}`);
       if (r.status !== 200) return res.status(200).json({ error: `MyClub svarade ${r.status}`, activities: [] });
       const list = Array.isArray(r.data) ? r.data : (r.data?.results || r.data?.activities || []);
       return res.status(200).json({ activities: list });
