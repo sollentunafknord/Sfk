@@ -21,12 +21,12 @@ function verifyToken(token) {
   } catch(e) { return null; }
 }
 
-function myClubGet(memberId, path) {
+function myClubGet(memberId, pathWithQuery) {
   return new Promise((resolve, reject) => {
-    const fullPath = `/api/v3/member-admin/${memberId}${path}`;
+    const parsed = new URL(`https://member.myclub.se/api/v3/member-admin/${memberId}${pathWithQuery}`);
     const req = https.request({
-      host: 'member.myclub.se',
-      path: fullPath,
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${MYCLUB_TOKEN}`,
@@ -38,7 +38,7 @@ function myClubGet(memberId, path) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
-        catch(e) { resolve({ status: res.statusCode, data: null, raw: data }); }
+        catch(e) { resolve({ status: res.statusCode, data: null, raw: data.slice(0, 200) }); }
       });
     });
     req.on('error', reject);
