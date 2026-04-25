@@ -10,12 +10,17 @@ async function loadMyclubActivities() {
 
   try {
     const r = await fetch('/api/myclub?' + new URLSearchParams({ action: 'activities', from, to }), { headers: authHeaders() });
-    const d = await r.json();
-    if (!r.ok) { listEl.innerHTML = `<div class="empty-state" style="color:var(--red)">Fel: ${d.error}</div>`; return; }
+    const text = await r.text();
+    let d;
+    try { d = JSON.parse(text); } catch(e) {
+      listEl.innerHTML = `<div class="empty-state" style="color:var(--red)">API-fel (ej JSON): ${text.slice(0,120)}</div>`;
+      return;
+    }
+    if (d.error) { listEl.innerHTML = `<div class="empty-state" style="color:var(--red)">Fel: ${d.error}</div>`; return; }
     _myclubActivities = d.activities || [];
     renderMyclubList();
   } catch(e) {
-    listEl.innerHTML = `<div class="empty-state" style="color:var(--red)">Anslutningsfel: ${e.message}</div>`;
+    listEl.innerHTML = `<div class="empty-state" style="color:var(--red)">Fel: ${e.message}</div>`;
   }
 }
 
