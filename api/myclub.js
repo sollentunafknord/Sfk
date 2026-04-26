@@ -62,13 +62,13 @@ module.exports = async (req, res) => {
   const action   = req.query.action;
   const memberId = MYCLUB_MEMBER_ID;
 
-  if (!memberId || !MYCLUB_TOKEN) {
-    return res.status(500).json({ error: 'MyClub konfiguration saknas' });
+  if (action === 'debug' && req.query.key === 'sfkdebug2026') {
+    const r = await myClubGet(memberId, '/activities/calendar/?limit=1&search_start_day=2026-04-01&search_end_day=2026-04-30&open_activity=true');
+    return res.status(200).json({ memberId, tokenLen: MYCLUB_TOKEN.length, tokenStart: MYCLUB_TOKEN.slice(0,6), mcStatus: r.status });
   }
 
-  if (action === 'debug') {
-    const r = await myClubGet(memberId, '/activities/calendar/?limit=1&search_start_day=2026-04-01&search_end_day=2026-04-30&open_activity=true');
-    return res.status(200).json({ memberId, tokenLen: MYCLUB_TOKEN.length, tokenStart: MYCLUB_TOKEN.slice(0,6), status: r.status });
+  if (!memberId || !MYCLUB_TOKEN) {
+    return res.status(500).json({ error: 'MyClub konfiguration saknas' });
   }
 
   // ── Aktiviteler listesi ──────────────────────────────
