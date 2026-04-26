@@ -52,11 +52,6 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  if (req.query.action === 'debug' && req.query.key === 'sfkdebug2026') {
-    const r = await myClubGet(MYCLUB_MEMBER_ID, '/activities/calendar/?limit=1&search_start_day=2026-04-01&search_end_day=2026-04-30&open_activity=true');
-    return res.status(200).json({ memberId: MYCLUB_MEMBER_ID, tokenLen: MYCLUB_TOKEN.length, tokenStart: MYCLUB_TOKEN.slice(0,6), mcStatus: r.status });
-  }
-
   const auth = req.headers.authorization || '';
   const sfkToken = auth.replace('Bearer ', '');
   const payload = verifyToken(sfkToken);
@@ -66,11 +61,6 @@ module.exports = async (req, res) => {
 
   const action   = req.query.action;
   const memberId = MYCLUB_MEMBER_ID;
-
-  if (action === 'debug' && req.query.key === 'sfkdebug2026') {
-    const r = await myClubGet(memberId, '/activities/calendar/?limit=1&search_start_day=2026-04-01&search_end_day=2026-04-30&open_activity=true');
-    return res.status(200).json({ memberId, tokenLen: MYCLUB_TOKEN.length, tokenStart: MYCLUB_TOKEN.slice(0,6), mcStatus: r.status });
-  }
 
   if (!memberId || !MYCLUB_TOKEN) {
     return res.status(500).json({ error: 'MyClub konfiguration saknas' });
