@@ -87,7 +87,7 @@ function renderMatchList(matches) {
     const dateStr = d.toLocaleDateString('sv-SE', {day:'2-digit',month:'short',year:'numeric'});
     const typeClass = 'type-' + m.gameType;
     const SFK_IDS = [398871, 74782, 512525, 68503, 201387, 457347, 402766, 511901];
-    const isHome = SFK_IDS.includes(m.homeTeamId);
+    const isHome = m.teamId ? (m.homeTeamId === m.teamId) : SFK_IDS.includes(m.homeTeamId);
     const sfkLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Sollentuna_FK_logo_%282022%29.svg/960px-Sollentuna_FK_logo_%282022%29.svg.png';
     const opponentLogo = isHome ? m.awayLogo : m.homeLogo;
     const opponentName = isHome ? m.awayTeam : m.homeTeam;

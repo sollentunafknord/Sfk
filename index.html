@@ -173,7 +173,8 @@
               <option value="träning">Träning</option>
             </select>
           </div>
-          <button onclick="loadMyclubActivities()" class="btn btn-primary" style="padding:0.45rem 1.1rem;">🔄 Hämta</button>
+          <button onclick="loadMyclubActivities()" class="btn btn-primary" style="padding:0.45rem 1.1rem;">🔄 Hämta aktiviteter</button>
+          <button id="myclubStatsBtn" onclick="loadMyclubStats()" class="btn btn-secondary" style="padding:0.45rem 1.1rem;">📊 Hämta statistik</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start;">
           <div id="myclubActivityList"><div class="empty-state">Välj datum och klicka Hämta</div></div>
@@ -184,6 +185,15 @@
             </div>
             <div id="myclubAttendanceBody"></div>
           </div>
+        </div>
+
+        <!-- Närvaro statistik tablosu -->
+        <div id="myclubStatsSection" style="display:none;margin-top:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+            <strong style="font-family:'Barlow Condensed',sans-serif;font-size:1.15rem;">📊 Närvaro per spelare</strong>
+            <button onclick="document.getElementById('myclubStatsSection').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;">✕</button>
+          </div>
+          <div id="myclubStatsBody"><div class="empty-state">Klicka "Hämta statistik"</div></div>
         </div>
       </div>
       <!-- /MYCLUB TAB -->
