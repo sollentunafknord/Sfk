@@ -788,7 +788,7 @@ module.exports = async (req, res) => {
     if (sfkRepEventIds && overview?.Blurbs) {
       overview.Blurbs.forEach(b => {
         if (sfkRepEventIds.has(b.ItemID)) {
-          const key = `${b.TypeID}|${b.Title}`;
+          const key = `${b.TypeID}|${b.Title}|${b.GameMinute}`;
           sfkCoveredKeys.add(key);
         }
       });
@@ -803,8 +803,8 @@ module.exports = async (req, res) => {
       });
       sortedBlurbs.forEach(b => {
         if (allowedEventIds && b.ItemID && !allowedEventIds.has(b.ItemID)) return;
-        // SFK rapportörü bu tip+oyuncuyu kapsamışsa, başkasından geleni reddet
-        const coverKey = `${b.TypeID}|${b.Title}`;
+        // SFK rapportörü bu dakika+tip+oyuncu kombinasyonunu kapsamışsa, başkasından geleni reddet
+        const coverKey = `${b.TypeID}|${b.Title}|${b.GameMinute}`;
         if (sfkRepEventIds && sfkCoveredKeys.has(coverKey) && !sfkRepEventIds.has(b.ItemID)) return;
         const isOurTeam = isHome ? !b.IsAwayTeamAction : b.IsAwayTeamAction;
         if (!isOurTeam) return;
