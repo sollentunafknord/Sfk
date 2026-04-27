@@ -221,14 +221,14 @@
           <div><button class="btn btn-primary" id="fetchMatchesBtn" onclick="fetchMatches()">⚡ Hämta matcher</button></div>
         </div>
 
-        <div style="display:flex;gap:1rem;">
+        <div class="matches-layout">
           <!-- Maç listesi -->
-          <div style="flex:1;min-width:300px;">
+          <div class="matches-list-col">
             <div class="section-title">Matchlista <span id="matchCountBadge" style="color:var(--muted);font-size:0.85rem;"></span></div>
             <div id="matchList"><div class="empty-state">Hämta matcher för att börja</div></div>
           </div>
           <!-- Maç detay -->
-          <div style="flex:2;" id="matchDetailWrap" style="display:none;">
+          <div class="matches-detail-col" id="matchDetailWrap">
             <div class="section-title">Matchdetaljer</div>
             <div id="matchDetail"><div class="empty-state">Välj en match</div></div>
           </div>
