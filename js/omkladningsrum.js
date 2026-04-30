@@ -1113,6 +1113,8 @@ function renderNastaContent(games) {
         preAssigned[g.gameId + '_home'] = 'Herr';
       } else if (homeName.includes('a-lag dam') || (homeName.includes('dam') && homeName.includes('sollentuna'))) {
         preAssigned[g.gameId + '_home'] = 'Dam';
+      } else if (homeName.includes('p16') && nonSpecial.includes('Rum 6')) {
+        preAssigned[g.gameId + '_home'] = 'Rum 6';
       } else {
         preAssigned[g.gameId + '_home'] = nextRoom();
       }
@@ -1124,6 +1126,8 @@ function renderNastaContent(games) {
         preAssigned[g.gameId + '_away'] = 'Herr';
       } else if (awayName.includes('a-lag dam') || (awayName.includes('dam') && awayName.includes('sollentuna'))) {
         preAssigned[g.gameId + '_away'] = 'Dam';
+      } else if (awayName.includes('p16') && nonSpecial.includes('Rum 6')) {
+        preAssigned[g.gameId + '_away'] = 'Rum 6';
       } else {
         preAssigned[g.gameId + '_away'] = nextRoom();
       }
