@@ -51,7 +51,10 @@ function renderStatsTable(d, prefix) {
   const thStyle = `cursor:pointer;user-select:none;`;
   const th = (col, label, style='') => `<th class="stats-th" data-col="${col}" onclick="sortStatsTable('${col}')" style="${thStyle}${style}" title="Sortera efter ${label}">${label} ${statsSort.col===col ? (statsSort.dir===-1?'↓':'↑') : '↕'}</th>`;
 
-  return `<div style="margin-bottom:0.75rem;color:var(--muted);font-size:0.85rem;">${d.totalGames || 0} matcher sparade</div>
+  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+    <div style="color:var(--muted);font-size:0.85rem;">${d.totalGames || 0} matcher sparade</div>
+    <button onclick="exportStatsPdf()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:0.35rem 0.9rem;border-radius:6px;cursor:pointer;font-size:0.82rem;">📄 Exportera PDF</button>
+  </div>
   <div class="table-wrap" id="statsTableWrap"><table>
     <thead><tr>
       <th>#</th><th>Spelare</th>
@@ -163,6 +166,83 @@ async function loadOyuncuStats() {
     setError('Fel: ' + e.message);
     setStatus('', false);
   }
+}
+
+function exportStatsPdf() {
+  const data = window._lastStatsData;
+  if (!data || !data.players || !data.players.length) {
+    alert('Ingen statistik att exportera');
+    return;
+  }
+
+  let players = [...data.players];
+
+  const selectedPlayerIds = getSelectedPlayers ? getSelectedPlayers() : [];
+  if (selectedPlayerIds.length > 0) {
+    players = players.filter(p => selectedPlayerIds.includes(p.playerId));
+  }
+
+  players.sort((a, b) => {
+    const av = a[statsSort.col] ?? 0;
+    const bv = b[statsSort.col] ?? 0;
+    const aEmpty = av === 0 || av === null;
+    const bEmpty = bv === 0 || bv === null;
+    if (aEmpty && bEmpty) return a.name.localeCompare(b.name, 'sv');
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    if (bv !== av) return (bv - av) * statsSort.dir * -1;
+    return a.name.localeCompare(b.name, 'sv');
+  });
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const teamEl = document.getElementById('statsTeam') || document.getElementById('trTeam');
+  const teamName = teamEl ? (teamEl.options[teamEl.selectedIndex]?.text || 'Alla lag') : 'Alla lag';
+  const fromVal = document.getElementById('statsFrom')?.value || document.getElementById('trFrom')?.value || '';
+  const toVal = document.getElementById('statsTo')?.value || document.getElementById('trTo')?.value || '';
+  const dateRange = [fromVal, toVal].filter(Boolean).join(' – ') || 'Alla datum';
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('Sollentuna FK — Spelarstatistik', 14, 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Lag: ${teamName}   |   Period: ${dateRange}   |   Matcher: ${data.totalGames || 0}`, 14, 26);
+  doc.text(`Genererad: ${new Date().toLocaleDateString('sv-SE')}`, 14, 31);
+  doc.setTextColor(0);
+
+  const v = (n) => (n > 0 ? String(n) : '—');
+
+  const rows = players.map(p => [
+    `#${p.shirt}`,
+    p.name,
+    v(p.minutesPlayed || 0),
+    v(p.games),
+    v(p.starterGames || 0),
+    v(p.goals),
+    v(p.assists),
+    v(p.yellowCards),
+    v(p.redCards),
+    v(p.goalsPerGame || 0),
+    p.minutesPerGoal ? `${p.minutesPerGoal}'` : '—',
+    p.minutesPerGame > 0 ? `${p.minutesPerGame}'` : '—',
+  ]);
+
+  doc.autoTable({
+    startY: 36,
+    head: [['#', 'Spelare', 'Tot Min', 'Trupp', 'Start 11', 'Mål', 'Ast', 'Gult', 'Rött', 'Mål/M', 'Min/Mål', 'Min/M']],
+    body: rows,
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 80, 160], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [240, 245, 255] },
+    columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 48 } },
+  });
+
+  const safeName = teamName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+  doc.save(`SFK-Statistik-${safeName}-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 async function loadOyuncuMatches() {
