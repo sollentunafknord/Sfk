@@ -7,6 +7,12 @@
 const NORRVIKEN_ARENAS = [21808, 21815, 20977, 20976, 21807];
 const EDSBERGS_ARENAS  = [20586, 20588, 20591];
 
+function getArenaGroup(arenaId) {
+  if (NORRVIKEN_ARENAS.includes(arenaId)) return 'norrviken';
+  if (EDSBERGS_ARENAS.includes(arenaId))  return 'edsbergs';
+  return 'other_' + arenaId;
+}
+
 const NORRVIKEN_ROOMS = [
   'Herr','Rum 2','Rum 3','Rum 5','Rum 6','Dam'
 ];
@@ -1040,7 +1046,7 @@ function checkDoubleBooking() {
     for (var j = i + 1; j < slots.length; j++) {
       var a = slots[i], b = slots[j];
       if (a.date !== b.date) continue;          // Farklı gün — çakışma olmaz
-      if (a.arenaId !== b.arenaId) continue;    // Farklı arena — çakışma olmaz
+      if (getArenaGroup(a.arenaId) !== getArenaGroup(b.arenaId)) continue; // Farklı tesis
       if (a.room !== b.room || !a.room) continue; // Farklı oda
       // Saat çakışıyor mu? (a.in < b.out && b.in < a.out)
       if (a.inTime < b.outTime && b.inTime < a.outTime) {
@@ -1090,7 +1096,7 @@ function renderNastaContent(games) {
       var skip = new Set(['Herr','Dam','Flick']);
       var nonSpecial = rl.filter(function(r){ return !skip.has(r); });
       var date = new Date(g.gameDate).toISOString().slice(0,10);
-      var key = date + '|' + g.arenaId;
+      var key = date + '|' + getArenaGroup(g.arenaId);
       if (!dayArenaRoomIndex[key]) dayArenaRoomIndex[key] = 0;
 
       function nextRoom() {
