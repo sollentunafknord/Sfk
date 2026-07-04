@@ -3,6 +3,22 @@
 // Bağımlılıklar: authHeaders(), state, setStatus(), setError(), SFK_PLAYERS (index.html/auth-app.js'de tanımlı)
 // =============================================================
 
+// Bir SFK takım adından (ör. "Sollentuna FK F14 A 1 (F14 A)") aktif takım ID'sini çöz.
+// window._activeTeamsCache içindeki takım adlarını normalize edip en spesifik (en uzun)
+// eşleşmeyi seçer. Bulunamazsa null döner.
+function resolveSfkTeamId(sfkName) {
+  const teams = window._activeTeamsCache || [];
+  if (!sfkName || !teams.length) return null;
+  const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9åäö]/g, '');
+  const hay = norm(sfkName);
+  let best = null, bestLen = 0;
+  teams.forEach(t => {
+    const needle = norm(t.team_name);
+    if (needle && needle.length > bestLen && hay.includes(needle)) { best = t.team_id; bestLen = needle.length; }
+  });
+  return best;
+}
+
 async function fetchMatches() {
   const btn = document.getElementById('fetchMatchesBtn');
   btn.disabled = true;
@@ -36,10 +52,13 @@ async function fetchMatches() {
       const isHome = m.home_team?.includes('Sollentuna');
       const opponentName = isHome ? m.away_team : m.home_team;
       // Aynı rakiple önceki maçtan logo bul
-      const prevMatch = matches.find(pm => 
+      const prevMatch = matches.find(pm =>
         pm.homeTeam === opponentName || pm.awayTeam === opponentName
       );
       const opponentLogo = prevMatch ? (prevMatch.homeTeam === opponentName ? prevMatch.homeLogo : prevMatch.awayLogo) : null;
+      // SFK takımını sabit 398871 yerine takım adından çöz — yoksa F14/P17 vb.
+      // maçlar yanlışlıkla P16A filtresine sızıyordu. Çözülemezse null (sadece "Alla lag").
+      const sfkTeamId = resolveSfkTeamId(isHome ? m.home_team : m.away_team);
       return {
         gameId: m.game_id,
         gameDate: m.game_date,
@@ -49,7 +68,9 @@ async function fetchMatches() {
         awayScore: m.away_score,
         leagueName: m.league_name,
         gameType: m.game_type,
-        homeTeamId: isHome ? 398871 : 0,
+        teamId: sfkTeamId || undefined,
+        homeTeamId: isHome ? (sfkTeamId || 0) : 0,
+        awayTeamId: isHome ? 0 : (sfkTeamId || 0),
         homeLogo: isHome ? sfkLogo : opponentLogo,
         awayLogo: isHome ? opponentLogo : sfkLogo,
         isManual: true,

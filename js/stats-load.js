@@ -22,6 +22,9 @@ async function loadActiveTeamDropdown() {
       teams = Array.isArray(allTeams) ? allTeams.filter(t => t.is_active) : [];
     }
 
+    // Manuel maçların takımını isimden çözebilmek için tüm rolde cache'le
+    window._activeTeamsCache = teams;
+
     const current = select.value;
     select.innerHTML = u.role === 'antrenor' ? '' : '<option value="">Alla lag</option>';
     teams.forEach(function(t) {
