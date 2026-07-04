@@ -667,7 +667,7 @@ module.exports = async (req, res) => {
 
     // ADIM 3: DEĞİŞİKLİKLER — Kim girdi/çıktı, hangi dakikada
     const substitutions = {};
-    const defaultDur = 90;
+    const defaultDur = parseInt(req.query.gameDuration) || 90;
 
     // Değişiklikleri işlemeden önce duplicate'leri temizle ve SIRALA
     const seenSubs = new Set();
@@ -909,6 +909,7 @@ module.exports = async (req, res) => {
       ambiguous,
       reporters: sfkReporters,
       selectedReporterId,
+      gameDuration: defaultDur,
 
     });
   }

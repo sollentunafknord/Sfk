@@ -124,17 +124,22 @@ function renderMatchList(matches) {
   }).join('');
 }
 
-async function loadMatchDetail(match, reporterId = null) {
+async function loadMatchDetail(match, reporterId = null, gameDuration = null) {
   state.selectedMatch = match;
-  document.querySelectorAll('.match-card').forEach(c => c.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
+  // Kart seçimini sadece bir maç kartından tetiklendiğinde güncelle
+  // (rapportör/matchtid yeniden yüklemesinde event.currentTarget bir buton/input olur)
+  if (typeof event !== 'undefined' && event?.currentTarget?.classList?.contains('match-card')) {
+    document.querySelectorAll('.match-card').forEach(c => c.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+  }
 
   setStatus('Hämtar matchdetaljer...');
   document.getElementById('matchDetail').innerHTML = '<div class="empty-state">Laddar...</div>';
 
   try {
     const reporterParam = reporterId ? `&reporterId=${reporterId}` : '';
-    const r = await fetch(`/api/admin?action=matchdetail&gameId=${match.gameId}&teamId=${match.teamId}${reporterParam}`, {headers: authHeaders()});
+    const durationParam = gameDuration ? `&gameDuration=${gameDuration}` : '';
+    const r = await fetch(`/api/admin?action=matchdetail&gameId=${match.gameId}&teamId=${match.teamId}${reporterParam}${durationParam}`, {headers: authHeaders()});
     const text = await r.text();
     let detail;
     try {
@@ -262,7 +267,9 @@ function renderMatchDetail(detail) {
         <div style="display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;">
           <div style="display:flex;align-items:center;gap:0.5rem;">
             <label style="font-size:0.82rem;color:var(--muted);">Matchtid (min):</label>
-            <input type="number" id="gameDuration" value="90" min="10" max="120" 
+            <input type="number" id="gameDuration" value="${detail.gameDuration || 90}" min="10" max="120"
+              title="Ändra för att räkna om spelarnas minuter (t.ex. 2×25 = 50)"
+              onchange="if(+this.value>=10)loadMatchDetail(state.selectedMatch, ${detail.selectedReporterId || null}, +this.value)"
               style="width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:0.3rem 0.5rem;text-align:center;">
           </div>
           <button class="btn btn-success" onclick="saveMatch()">
