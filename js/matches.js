@@ -56,9 +56,9 @@ async function fetchMatches() {
         pm.homeTeam === opponentName || pm.awayTeam === opponentName
       );
       const opponentLogo = prevMatch ? (prevMatch.homeTeam === opponentName ? prevMatch.homeLogo : prevMatch.awayLogo) : null;
-      // SFK takımını sabit 398871 yerine takım adından çöz — yoksa F14/P17 vb.
-      // maçlar yanlışlıkla P16A filtresine sızıyordu. Çözülemezse null (sadece "Alla lag").
-      const sfkTeamId = resolveSfkTeamId(isHome ? m.home_team : m.away_team);
+      // Önce DB'de saklanan team_id; yoksa (eski kayıt) takım adından çöz.
+      // Sabit 398871 kullanılmıyor — F14/P17 vb. maçlar P16A filtresine sızmasın.
+      const sfkTeamId = m.team_id || resolveSfkTeamId(isHome ? m.home_team : m.away_team);
       return {
         gameId: m.game_id,
         gameDate: m.game_date,
@@ -583,6 +583,7 @@ async function saveMatch() {
     const payload = {
       ...state.currentDetail,
       gameDuration,
+      teamId: state.currentDetail.teamId || state.selectedMatch?.teamId || null,
       players: state.currentDetail.players.filter(p => p.selected).map(p => ({
         ...p,
         minutesPlayed: p.minutesPlayed || 0

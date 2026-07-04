@@ -911,6 +911,7 @@ module.exports = async (req, res) => {
       reporters: sfkReporters,
       selectedReporterId,
       gameDuration: defaultDur,
+      teamId: tid,
 
     });
   }
@@ -918,7 +919,8 @@ module.exports = async (req, res) => {
   // Maçı onayla ve database'e kaydet
   if (action === 'savematch' && req.method === 'POST') {
     const { gameId, gameDate, homeTeam, awayTeam, homeScore, awayScore,
-            leagueName, gameType, players } = req.body || {};
+            leagueName, gameType, players, teamId } = req.body || {};
+    const teamIdInt = parseInt(teamId) || null;
 
     if (!gameId || !players) return res.status(400).json({ error: 'Information saknas' });
     const gameDuration = req.body.gameDuration || 90;
@@ -933,7 +935,7 @@ module.exports = async (req, res) => {
       await httpPost(new URL(SUPABASE_URL).host, `/rest/v1/matches?id=eq.${matchId}`, {
         game_date: gameDate, home_team: homeTeam, away_team: awayTeam,
         home_score: homeScore, away_score: awayScore,
-        league_name: leagueName, game_type: gameType,
+        league_name: leagueName, game_type: gameType, team_id: teamIdInt,
         approved_by: user.id, approved_at: new Date().toISOString(),
       }, {
         'apikey': SUPABASE_KEY,
@@ -948,6 +950,7 @@ module.exports = async (req, res) => {
         away_team: awayTeam, home_score: parseInt(homeScore),
         away_score: parseInt(awayScore), league_name: leagueName,
         game_type: gameType, game_duration: parseInt(gameDuration) || 90,
+        team_id: teamIdInt,
         approved_by: user.id,
         approved_at: new Date().toISOString(),
       });
