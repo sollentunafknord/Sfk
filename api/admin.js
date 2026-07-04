@@ -668,7 +668,16 @@ module.exports = async (req, res) => {
 
     // ADIM 3: DEĞİŞİKLİKLER — Kim girdi/çıktı, hangi dakikada
     const substitutions = {};
-    const defaultDur = parseInt(req.query.gameDuration) || 90;
+    // Süre önceliği: URL parametresi > kaydedilmiş maçın game_duration'ı > 90.
+    // Böylece kaydedilen matchtid tekrar açıldığında korunur (90'a düşmez).
+    let savedDuration = null;
+    if (!req.query.gameDuration) {
+      const savedMatch = await supabaseGet(`/matches?game_id=eq.${gameId}&select=game_duration`);
+      if (Array.isArray(savedMatch) && savedMatch[0] && savedMatch[0].game_duration) {
+        savedDuration = parseInt(savedMatch[0].game_duration);
+      }
+    }
+    const defaultDur = parseInt(req.query.gameDuration) || savedDuration || 90;
 
     // Değişiklikleri işlemeden önce duplicate'leri temizle ve SIRALA
     const seenSubs = new Set();
