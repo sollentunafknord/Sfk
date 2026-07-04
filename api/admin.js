@@ -565,7 +565,31 @@ module.exports = async (req, res) => {
     // Seçili rapportör varsa filtrele
     const selectedReporterId = req.query.reporterId ? parseInt(req.query.reporterId) : null;
 
-    const isHome = header.HomeTeamID === tid || lineups?.HomeTeamGameTeamRoster?.TeamID === tid;
+    // SFK tarafını (ev/deplasman) güvenilir biçimde belirle.
+    // Takım ID'si turnuva/kupa maçlarında değişebildiği için sadece tid'e
+    // güvenmiyoruz; öncelikli sinyal: hangi kadroda gerçekten SFK oyuncusu var.
+    const countSfkInSide = (roster, lineup) => {
+      const ids = new Set();
+      const add = arr => Array.isArray(arr) && arr.forEach(p => { if (SFK_PLAYER_IDS_DYN.has(p.PlayerID)) ids.add(p.PlayerID); });
+      if (roster) { add(roster.Players); add(roster.Substitutes); }
+      if (lineup) add(lineup.GameLineUpPlayers);
+      return ids.size;
+    };
+    const homeSfkCount = countSfkInSide(lineups?.HomeTeamGameTeamRoster, lineups?.HomeTeamLineUp);
+    const awaySfkCount = countSfkInSide(lineups?.AwayTeamGameTeamRoster, lineups?.AwayTeamLineUp);
+
+    let isHome;
+    if (homeSfkCount !== awaySfkCount) {
+      // Hangi tarafta daha çok SFK oyuncusu varsa bizim takım o taraf
+      isHome = homeSfkCount > awaySfkCount;
+    } else {
+      // Kadro verisi yok/eşit — takım adına, ardından tid'e göre karar ver
+      const nameHome = /sollentuna/i.test(header.HomeTeamDisplayName || '');
+      const nameAway = /sollentuna/i.test(header.AwayTeamDisplayName || '');
+      if (nameHome !== nameAway) isHome = nameHome;
+      else isHome = header.HomeTeamID === tid || lineups?.HomeTeamGameTeamRoster?.TeamID === tid;
+    }
+
     const lineupTeam = isHome ? lineups.HomeTeamLineUp : lineups.AwayTeamLineUp;
     const rosterTeam = isHome ? lineups.HomeTeamGameTeamRoster : lineups.AwayTeamGameTeamRoster;
 
