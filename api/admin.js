@@ -197,7 +197,8 @@ async function getDynamicRoster(mfToken) {
 const LEAGUES = [
   {id:59554, type:'lig',      team:457347, label:'P16 Div.1 2025'},
   {id:68703, type:'kupa',     team:398871, label:'P16 Ligacupen Grupp 3 2026'},
-  {id:129362,type:'lig',      team:398871, label:'P16 Div.1 2026'},
+  {id:69447, type:'lig',      team:398871, label:'P16 Div.1 2026'},
+  {id:78819, type:'lig',      team:398871, label:'Piteå Summer Games 2026'},
   {id:70389, type:'kupa',     team:398871, label:'P16 Ligacupen 2026'},
   {id:59382, type:'hazirlik', team:398871, label:'P16 Träningsmatcher 2025'},
   {id:69555, type:'hazirlik', team:398871, label:'P16 Träningsmatcher 2026'},
@@ -1361,7 +1362,7 @@ module.exports = async (req, res) => {
       // Adım 1: Bilinen bir ligden gerçek maçları çek
       // P16 2026 liginden maç al
       const leagueGames = await minfotbollGet(
-        `/api/leagueapi/getleaguegames?leagueId=129362`, mfToken
+        `/api/leagueapi/getleaguegames?leagueId=69447`, mfToken
       );
       const sample = Array.isArray(leagueGames) ? leagueGames.slice(0, 3) : [];
       results['league_sample'] = sample.map(g => ({

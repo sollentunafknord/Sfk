@@ -38,7 +38,8 @@ const SFK_PLAYERS = {
 // Tüm ligler
 const LEAGUES = [
   { id: 59554,  type: 'lig',      team: 398871, label: 'P16 Div.1 2025' },
-  { id: 129362, type: 'lig',      team: 398871, label: 'P16 Div.1 2026' },
+  { id: 69447,  type: 'lig',      team: 398871, label: 'P16 Div.1 2026' },
+  { id: 78819,  type: 'lig',      team: 398871, label: 'Piteå Summer Games 2026' },
   { id: 70389,  type: 'kupa',     team: 398871, label: 'P16 Ligacupen 2026' },
   { id: 69555,  type: 'hazirlik', team: 398871, label: 'P16 Träningsmatcher 2026' },
   { id: 69500,  type: 'lig',      team: 74782,  label: 'P17 Allsvenskan 2026' },
