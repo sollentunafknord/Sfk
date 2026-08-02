@@ -1,0 +1,22 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Her 2 günde bir 06:00 UTC — Supabase 7 günde durduğu için bol marj
+    - cron: '0 6 */2 * *'
+  workflow_dispatch: # Manuel tetikleme için
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supabase'i uyanık tut
+        run: |
+          curl -s "https://sollentuna-fk.vercel.app/api/keepalive" -o response.json
+          cat response.json
+          if grep -q '"ok":true' response.json; then
+            echo "✅ Supabase uyanık"
+          else
+            echo "❌ Keep-alive başarısız!"
+            exit 1
+          fi
