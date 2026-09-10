@@ -217,7 +217,8 @@ function showApp() {
   const dashTab = document.getElementById('dashboardTab');
   if (omkTab) omkTab.style.display = (u.role === 'admin' || u.role === 'klubbledare') ? 'inline-block' : 'none';
   if (paramTab) paramTab.style.display = u.role === 'admin' ? 'inline-block' : 'none';
-  if (dashTab) dashTab.style.display = u.role === 'admin' ? 'inline-block' : 'none';
+  // Dashboard: admin + klubbledare + tränare (Motståndarspelare-sektionen behövs av tränarna)
+  if (dashTab) dashTab.style.display = (u.role === 'admin' || u.role === 'antrenor' || u.role === 'klubbledare') ? 'inline-block' : 'none';
   // Matcher ve Stats: admin, antrenor, klubbledare
   const matchesTab = document.querySelector('#viewAdmin .tab[onclick*="matches"]');
   const statsTab = document.querySelector('#viewAdmin .tab[onclick*="stats"]');
