@@ -978,6 +978,48 @@ module.exports = async (req, res) => {
       }
     };
 
+    // ADIM 3b: TUTARLILIK UYARILARI
+    // MinFotboll'daki rapor hataları dakikaları sessizce bozuyor. Örnek: maç
+    // 1965597'de 32. dakikadaki değişiklik "IN #21 Albin Nordin" diye kaydedilmiş,
+    // ama Albin ilk 11'de başlamıştı — giren aslında #20 Charlie Nordenson'du
+    // (tek haneli yazım hatası). Böyle durumları tespit edip uyarı olarak gösteriyoruz;
+    // veriyi kendiliğinden değiştirmiyoruz, düzeltme MinFotboll'da yapılmalı.
+    const warnings = [];
+    squadPlayerIds.forEach(pid => {
+      const subs = substitutions[pid] || [];
+      if (!subs.length) return;
+      const shirt = playerShirtNos[pid] || '?';
+      const name = SFK_PLAYERS_DYN[pid]?.name || 'Okänd spelare';
+      if (playerIsStarter[pid] && subs[0].inAt > 0) {
+        warnings.push({
+          type: 'starterSubbedIn',
+          text: `#${shirt} ${name} står i startelvan men är registrerad som inbytt i ${subs[0].inAt}' — troligen fel tröjnummer i MinFotbolls bytesnotering.`,
+        });
+      }
+      if (!playerIsStarter[pid] && subs[0].inAt === 0 && subs[0].outAt !== null) {
+        warnings.push({
+          type: 'benchSubbedOut',
+          text: `#${shirt} ${name} står på bänken men är registrerad som utbytt i ${subs[0].outAt}' utan att ha bytts in.`,
+        });
+      }
+    });
+
+    // Toplam saha dakikası = ilk 11 sayısı × maç süresi. Sapma varsa bir değişiklik
+    // eksik ya da yanlış kaydedilmiş demektir — hangi oyuncu olduğunu söylemesek de
+    // "bu maçın dakikalarına güvenme" sinyali veriyor.
+    const starterCount = [...squadPlayerIds].filter(pid => playerIsStarter[pid]).length;
+    if (starterCount > 0) {
+      const totalMinutes = [...squadPlayerIds]
+        .reduce((n, pid) => n + calcMinutes(pid, !!playerIsStarter[pid], defaultDur), 0);
+      const expected = starterCount * defaultDur;
+      if (totalMinutes !== expected) {
+        warnings.push({
+          type: 'minuteSum',
+          text: `Summan av spelade minuter är ${totalMinutes}, förväntat ${expected} (${starterCount} × ${defaultDur} min). Något byte saknas eller är felregistrerat i MinFotboll.`,
+        });
+      }
+    }
+
     // ADIM 4: OLAYLAR — Gol, asist, kart
     const events = { goals:{}, assists:{}, yellowCards:{}, redCards:{} };
     const ambiguous = [...unknownRosterPlayers]; // Listede olmayan kadro oyuncuları
@@ -1095,6 +1137,7 @@ module.exports = async (req, res) => {
       gameType: getGameType(header.LeagueName),
       players,
       ambiguous,
+      warnings,
       reporters: sfkReporters,
       selectedReporterId,
       gameDuration: defaultDur,

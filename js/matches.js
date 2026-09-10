@@ -247,6 +247,22 @@ function renderMatchDetail(detail) {
     </div>
   ` : '';
 
+  // Tutarlılık uyarıları — MinFotboll'daki hatalı bytesnotering'leri görünür kılar.
+  // Bunlar seçim gerektirmez, sadece bilgilendirir; düzeltme MinFotboll'da yapılır.
+  const warningsHtml = detail.warnings && detail.warnings.length > 0 ? `
+    <div style="background:rgba(255,152,0,0.08);border:1px solid rgba(255,152,0,0.35);border-radius:10px;padding:0.9rem 1rem;margin-bottom:1rem;">
+      <div style="color:#ff9800;font-weight:700;margin-bottom:0.5rem;font-size:0.9rem;">
+        ⚠️ Kontrollera bytena i MinFotboll
+      </div>
+      ${detail.warnings.map(w => `
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.3rem;">• ${w.text}</div>
+      `).join('')}
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem;opacity:0.8;">
+        Minuterna nedan följer MinFotbolls data. Rätta noteringen i MinFotboll och hämta matchen igen.
+      </div>
+    </div>
+  ` : '';
+
   // Belirsiz olaylar paneli
   const ambiguousHtml = detail.ambiguous && detail.ambiguous.length > 0 ? `
     <div style="background:rgba(255,214,0,0.08);border:1px solid rgba(255,214,0,0.3);border-radius:10px;padding:1rem;margin-bottom:1rem;">
@@ -275,6 +291,7 @@ function renderMatchDetail(detail) {
   document.getElementById('matchDetail').innerHTML = `
     <div class="detail-panel">
       ${reportersHtml}
+      ${warningsHtml}
       ${ambiguousHtml}
       <div class="detail-header">
         <div>
