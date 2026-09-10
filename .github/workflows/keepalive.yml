@@ -1,22 +1,44 @@
 name: Supabase Keep-Alive
 
+# Supabase free tier'ın ölçütü "her gün DB'ye birkaç istek" — 2 günde bir tek
+# ping (~0.5 istek/gün) bunun ALTINDA kaldığı için 2026-09-09'da duraklatma
+# uyarısı geldi. Artık 6 saatte bir tetikleniyor ve endpoint her çağrıda 3
+# tabloya gidiyor → günde ~12 istek.
+#
+# İstek başarısız olursa job kırmızıya döner ve GitHub e-posta atar; yani bu
+# aynı zamanda "Supabase/Vercel sessizce bozuldu" alarmıdır.
+
 on:
   schedule:
-    # Her 2 günde bir 06:00 UTC — Supabase 7 günde durduğu için bol marj
-    - cron: '0 6 */2 * *'
+    # UTC 00:17, 06:17, 12:17, 18:17 — tam saat başları GitHub'da kalabalık
+    # olduğu için gecikme riskini azaltmak adına :17 seçildi.
+    - cron: '17 */6 * * *'
   workflow_dispatch: # Manuel tetikleme için
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Supabase'i uyanık tut
         run: |
-          curl -s "https://sollentuna-fk.vercel.app/api/keepalive" -o response.json
-          cat response.json
-          if grep -q '"ok":true' response.json; then
+          set -uo pipefail
+          code=$(curl -sS --max-time 30 --retry 2 --retry-delay 5 \
+            -o response.json -w '%{http_code}' \
+            "https://sollentuna-fk.vercel.app/api/keepalive") || code=000
+          echo "HTTP ${code}"
+          cat response.json || true
+          echo
+          if [ "${code}" = "200" ] && grep -q '"ok":true' response.json; then
             echo "✅ Supabase uyanık"
           else
-            echo "❌ Keep-alive başarısız!"
+            echo "::error::Keep-alive başarısız (HTTP ${code}) — proje duraklatılmış olabilir."
             exit 1
           fi

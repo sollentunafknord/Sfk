@@ -1,0 +1,32 @@
+name: Keepalive heartbeat
+
+# GitHub, 60 gün boyunca hiç aktivite görmeyen repo'larda zamanlanmış
+# workflow'ları OTOMATİK OLARAK KAPATIR. Bu repo aylarca dokunulmayabildiği
+# için keepalive.yml sessizce devre dışı kalabilir — o zaman Supabase de uyur.
+#
+# Bu workflow ayda bir boş commit atarak 60 günlük sayacı sıfırlar.
+# Commit mesajındaki [skip ci] Vercel'i gereksiz production deploy'a sokmaz.
+
+on:
+  schedule:
+    # Her ayın 1'i, UTC 05:23
+    - cron: '23 5 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bos commit at
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive heartbeat [skip ci]"
+          git push
