@@ -912,6 +912,15 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Bir oyuncu o an sahada mı? substitutions o ana kadar işlenmiş olayları tutuyor.
+    const onPitchAt = (pid) => {
+      const arr = substitutions[pid];
+      if (!arr || arr.length === 0) return !!playerIsStarter[pid];
+      return arr[arr.length - 1].outAt === null;
+    };
+    const swappedSubs = [];
+    const fixSwaps = req.query.fixSwaps === '1';
+
     // Kronolojik sıraya koy - önce erken dakikalar işlensin
     uniqueSubBlurbs.sort((a, b) => (a.GameClockSecond || 0) - (b.GameClockSecond || 0));
 
@@ -943,7 +952,24 @@ module.exports = async (req, res) => {
         }
       }
 
-      const clockSec = minute * 60; // dummy for below
+      // Ters kaydedilmiş değişiklik tespiti.
+      // Sahadaki bir oyuncu "giren", yedekteki bir oyuncu "çıkan" olarak
+      // kaydedilmişse ikisi de imkânsızdır — rapor eden giren/çıkanı ters yazmıştır.
+      // (Maç 1965494, 45. dk: IN #2 Alexander Hansen / OUT #17 Cian Hogan.)
+      // Sadece bu kesin desende düzeltiyoruz; "yanlış forma numarası" gibi belirsiz
+      // durumlara dokunmuyoruz.
+      if (inPid && outPid && SFK_PLAYER_IDS_DYN.has(inPid) && SFK_PLAYER_IDS_DYN.has(outPid)
+          && onPitchAt(inPid) && !onPitchAt(outPid)) {
+        swappedSubs.push({
+          minute,
+          inShirt: playerShirtNos[outPid] || '?',
+          inName: SFK_PLAYERS_DYN[outPid]?.name || 'Okänd',
+          outShirt: playerShirtNos[inPid] || '?',
+          outName: SFK_PLAYERS_DYN[inPid]?.name || 'Okänd',
+        });
+        if (fixSwaps) { const tmp = inPid; inPid = outPid; outPid = tmp; }
+      }
+
       if (inPid && SFK_PLAYER_IDS_DYN.has(inPid)) {
         squadPlayerIds.add(inPid);
         if (!substitutions[inPid]) substitutions[inPid] = [];
@@ -985,6 +1011,16 @@ module.exports = async (req, res) => {
     // (tek haneli yazım hatası). Böyle durumları tespit edip uyarı olarak gösteriyoruz;
     // veriyi kendiliğinden değiştirmiyoruz, düzeltme MinFotboll'da yapılmalı.
     const warnings = [];
+    swappedSubs.forEach(sw => {
+      warnings.push(fixSwaps ? {
+        type: 'swapFixed',
+        text: `${sw.minute}' bytet var omkastat i MinFotboll och har rättats här: in #${sw.inShirt} ${sw.inName}, ut #${sw.outShirt} ${sw.outName}.`,
+      } : {
+        type: 'swapDetected',
+        fixable: true,
+        text: `${sw.minute}' bytet ser omkastat ut: #${sw.outShirt} ${sw.outName} står som inbytt fast hen var på planen, och #${sw.inShirt} ${sw.inName} som utbytt fast hen satt på bänken.`,
+      });
+    });
     squadPlayerIds.forEach(pid => {
       const subs = substitutions[pid] || [];
       if (!subs.length) return;
@@ -1138,6 +1174,7 @@ module.exports = async (req, res) => {
       players,
       ambiguous,
       warnings,
+      fixSwaps,
       reporters: sfkReporters,
       selectedReporterId,
       gameDuration: defaultDur,

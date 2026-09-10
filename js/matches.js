@@ -145,7 +145,7 @@ function renderMatchList(matches) {
   }).join('');
 }
 
-async function loadMatchDetail(match, reporterId = null, gameDuration = null) {
+async function loadMatchDetail(match, reporterId = null, gameDuration = null, fixSwaps = false) {
   state.selectedMatch = match;
   // Kart seçimini sadece bir maç kartından tetiklendiğinde güncelle
   // (rapportör/matchtid yeniden yüklemesinde event.currentTarget bir buton/input olur)
@@ -160,7 +160,9 @@ async function loadMatchDetail(match, reporterId = null, gameDuration = null) {
   try {
     const reporterParam = reporterId ? `&reporterId=${reporterId}` : '';
     const durationParam = gameDuration ? `&gameDuration=${gameDuration}` : '';
-    const r = await fetch(`/api/admin?action=matchdetail&gameId=${match.gameId}&teamId=${match.teamId}${reporterParam}${durationParam}`, {headers: authHeaders()});
+    // Rättade byten gäller tills man laddar om matchen från listan
+    const fixParam = fixSwaps ? '&fixSwaps=1' : '';
+    const r = await fetch(`/api/admin?action=matchdetail&gameId=${match.gameId}&teamId=${match.teamId}${reporterParam}${durationParam}${fixParam}`, {headers: authHeaders()});
     const text = await r.text();
     let detail;
     try {
@@ -257,8 +259,15 @@ function renderMatchDetail(detail) {
       ${detail.warnings.map(w => `
         <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.3rem;">• ${w.text}</div>
       `).join('')}
+      ${detail.warnings.some(w => w.fixable) ? `
+        <button class="btn btn-secondary" style="font-size:0.82rem;padding:0.35rem 0.9rem;margin-top:0.6rem;"
+          onclick="loadMatchDetail(state.selectedMatch, ${detail.selectedReporterId || null}, ${detail.gameDuration || null}, true)">
+          ↔ Vänd bytet och räkna om
+        </button>` : ''}
       <div style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem;opacity:0.8;">
-        Minuterna nedan följer MinFotbolls data. Rätta noteringen i MinFotboll och hämta matchen igen.
+        ${detail.fixSwaps
+          ? 'Minuterna nedan är beräknade med det rättade bytet. Rätta gärna även i MinFotboll.'
+          : 'Minuterna nedan följer MinFotbolls data. Rätta noteringen i MinFotboll och hämta matchen igen.'}
       </div>
     </div>
   ` : '';
