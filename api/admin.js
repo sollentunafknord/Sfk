@@ -365,9 +365,14 @@ async function getMinfotbollToken() {
     } catch(e) {}
   }
 
-  // Token expire olmuş veya 30 dakikadan az kaldı — yenile
-  const result = await httpPost(MINFOTBOLL_API, '/api/jwtapi/refreshtoken', {accessToken, refreshToken});
-  if (!result.AccessToken) throw new Error('MinFotboll-token kunde inte hämtas');
+  // Token expire olmuş veya 30 dakikadan az kaldı — yenile.
+  // MinFotboll bu endpoint'te de rastgele takıldığı için timeout + 3 deneme.
+  let result = null;
+  for (let i = 0; i < 4 && !(result && result.AccessToken); i++) {
+    if (i) await new Promise(r => setTimeout(r, 300));
+    result = await httpPostTimed(MINFOTBOLL_API, '/api/jwtapi/refreshtoken', {accessToken, refreshToken});
+  }
+  if (!result || !result.AccessToken) throw new Error('MinFotboll-token kunde inte hämtas');
 
   // Cache'e kaydet
   try {
@@ -396,6 +401,144 @@ function getGameType(leagueName) {
   if (l.includes('träning')) return 'hazirlik';
   if (l.includes('cup') || l.includes('cupen')) return 'kupa';
   return 'lig';
+}
+
+// ===================== MOTSTÅNDARE (rakip takım oyuncuları) =====================
+// Kadro + doğum yılı + sezon bazında GP. MinFotboll'un profil endpoint'i yavaş ve
+// sık throttle ediyor, o yüzden sonuçlar opponent_players tablosunda cache'leniyor.
+const OPPONENT_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function supabaseUpsert(path, body) {
+  return httpPost(new URL(SUPABASE_URL).host, `/rest/v1${path}`, body, {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Prefer': 'resolution=merge-duplicates,return=minimal',
+  });
+}
+
+// MinFotboll istatistik tablosunu sezonlara göre topla.
+// Sütunlar ColumnTypeID ile tanımlanır (sıraya güvenme):
+// 29=säsong, 3=GP (spelade matcher), 1=mål, 2=assist, 4=gult, 5=rött, 7=startade
+function parseSeasonStats(table) {
+  const labels = table && table.TableHeader && table.TableHeader.ValueColumnLabels;
+  const rows = table && table.Rows;
+  if (!Array.isArray(labels) || !Array.isArray(rows)) return [];
+
+  const idx = {};
+  labels.forEach((l, i) => { idx[l.ColumnTypeID] = i; });
+  const val = (vc, typeId) => {
+    const i = idx[typeId];
+    return (i === undefined || !vc[i]) ? '' : vc[i].Value;
+  };
+  const num = (vc, typeId) => parseInt(val(vc, typeId), 10) || 0;
+
+  const bySeason = {};
+  rows.forEach(r => {
+    const vc = r.ValueColumns || [];
+    const season = val(vc, 29) || '—';
+    if (!bySeason[season]) {
+      bySeason[season] = { season, gp:0, goals:0, assists:0, yellow:0, red:0, starts:0, rows:[] };
+    }
+    const entry = {
+      team: r.Name || '',
+      competition: r.Details || '',
+      gp: num(vc,3), goals: num(vc,1), assists: num(vc,2),
+      yellow: num(vc,4), red: num(vc,5), starts: num(vc,7),
+    };
+    const s = bySeason[season];
+    s.gp += entry.gp; s.goals += entry.goals; s.assists += entry.assists;
+    s.yellow += entry.yellow; s.red += entry.red; s.starts += entry.starts;
+    s.rows.push(entry);
+  });
+
+  return Object.values(bySeason).sort((a,b) => String(b.season).localeCompare(String(a.season)));
+}
+
+// MinFotboll üç şekilde tökezliyor:
+//  1) çok paralel istekte bağlantıyı resetliyor (ECONNRESET) — tekrar denemek işe yarıyor,
+//  2) token 15 dk'da bir düşüyor ve gövdesiz 401 dönüyor — token'ı tazeleyip tekrar dene,
+//  3) her endpoint'te rastgele takılıyor ve bağlantı ~20 sn cevapsız kalıyor
+//     — kısa timeout ile kesip tekrar denemek genelde hemen çalışıyor.
+// status: -1 = timeout, 0 = ağ hatası, aksi halde HTTP kodu.
+// httpPost gibi ama timeout'lu; hata/timeout'ta reject etmez, null döner.
+function httpPostTimed(host, path, body, timeoutMs = 4000) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const bodyStr = JSON.stringify(body);
+    const req = https.request({
+      host, path, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr) },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('error', () => finish(null));
+      res.on('end', () => {
+        try { finish(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); } catch(e) { finish(null); }
+      });
+    });
+    req.setTimeout(timeoutMs, () => { req.destroy(); finish(null); });
+    req.on('error', () => finish(null));
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
+function minfotbollGetTimed(path, token, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const req = https.request({
+      host: MINFOTBOLL_API, path, method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('error', () => finish({ status: 0, data: null }));
+      res.on('end', () => {
+        let data = null;
+        try { data = JSON.parse(Buffer.concat(chunks).toString('utf-8')); } catch(e) {}
+        finish({ status: res.statusCode, data });
+      });
+    });
+    req.setTimeout(timeoutMs, () => { req.destroy(); finish({ status: -1, data: null }); });
+    req.on('error', () => finish({ status: 0, data: null }));
+    req.end();
+  });
+}
+
+async function minfotbollGetSafe(path, token, tries = 4) {
+  let tok = token;
+  for (let i = 0; i < tries; i++) {
+    const r = await minfotbollGetTimed(path, tok);
+    if (r.status === 401) {
+      _cachedToken = null; _cachedTokenExp = 0;
+      tok = await getMinfotbollToken();
+      continue;
+    }
+    if (r.data !== null) return r.data;
+    await new Promise(res => setTimeout(res, 300));
+  }
+  return null;
+}
+
+// Aynı anda en fazla `limit` istek çalıştır.
+async function mapPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) { const k = i++; out[k] = await fn(items[k], k); }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+// Rakip listesi sezon boyunca çok az değişir — instance ömrü boyunca hafızada tut.
+const OPPONENT_LIST_TTL_MS = 10 * 60 * 1000;
+const _opponentListCache = {};
+
+function opponentCacheIsFresh(row) {
+  return !!row && (Date.now() - new Date(row.synced_at).getTime()) < OPPONENT_CACHE_MS;
 }
 
 module.exports = async (req, res) => {
@@ -1772,6 +1915,187 @@ if (action === 'clubgames') {
         { status, updated_at: new Date().toISOString() });
       return res.status(200).json({ ok: true, result });
     } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
+  // Bir SFK takımının son 5 + gelecek 5 maçı (rakip takım ID'siyle birlikte).
+  // Dashboard'daki "Motståndarspelare" sorgusu bununla başlıyor.
+  if (action === 'teammatches') {
+   try {
+    const teamId = parseInt(req.query.teamId);
+    if (!teamId) return res.status(400).json({ error: 'teamId krävs' });
+
+    if (user.role === 'antrenor') {
+      const userTeams = await supabaseGet(`/user_team_access?user_id=eq.${user.id}&select=team_id`);
+      const allowed = new Set(Array.isArray(userTeams) ? userTeams.map(t => t.team_id) : []);
+      if (!allowed.has(teamId)) return res.status(403).json({ error: 'Behörighet krävs för det laget' });
+    }
+
+    const cacheKey = `matches:${teamId}`;
+    const hit = _opponentListCache[cacheKey];
+    if (hit && Date.now() - hit.at < OPPONENT_LIST_TTL_MS && req.query.refresh !== '1') {
+      return res.status(200).json(hit.result);
+    }
+
+    const mfToken = await getMinfotbollToken();
+
+    // MinFotboll rastgele takıldığı için tek tük istek boş dönebilir; kaç tanesinin
+    // düştüğünü sayıyoruz ki eksik liste cache'lenmesin ve kullanıcı uyarılsın.
+    let failed = 0;
+    const games = {};
+
+    const addGame = (g, leagueLabel) => {
+      if (!g || games[g.GameID]) return;
+      const isHome = g.HomeTeamID === teamId;
+      const isAway = g.AwayTeamID === teamId;
+      if (!isHome && !isAway) return;
+      const oppId = isHome ? g.AwayTeamID : g.HomeTeamID;
+      if (!oppId) return;
+      games[g.GameID] = {
+        gameId: g.GameID,
+        gameDate: g.GameTime,
+        homeTeam: g.HomeTeamDisplayName,
+        awayTeam: g.AwayTeamDisplayName,
+        homeScore: g.HomeTeamScore,
+        awayScore: g.AwayTeamScore,
+        isHome,
+        opponentTeamId: oppId,
+        opponentName: isHome ? g.AwayTeamDisplayName : g.HomeTeamDisplayName,
+        opponentLogo: (isHome ? g.AwayTeamClubLogoURL : g.HomeTeamClubLogoURL) || '',
+        leagueName: leagueLabel || g.LeagueDisplayName || '—',
+        played: g.GameStatusID === 3,
+      };
+    };
+
+    // Ligler + initteamsite fallback'i (fetchmatches ile aynı: bilinmeyen liglerdeki
+    // träningsmatch'ler) TEK havuzda — sıralı çalıştırmak yavaş MinFotboll'da
+    // en kötü durumu ikiye katlıyordu.
+    const sources = LEAGUES
+      .filter(l => l.team === teamId)
+      .map(l => ({ path: `/api/leagueapi/getleaguegames?leagueId=${l.id}`, label: l.label }))
+      .concat([{ path: `/api/teamapi/initteamsite?teamId=${teamId}`, site: true }]);
+
+    await mapPool(sources, 8, async (src) => {
+      const data = await minfotbollGetSafe(src.path, mfToken);
+      if (!data) { failed++; return; }
+      if (src.site) {
+        if (Array.isArray(data.MagazineBlurbs)) data.MagazineBlurbs.forEach(b => addGame(b.GameHeaderInfo, null));
+        return;
+      }
+      if (!Array.isArray(data)) { failed++; return; }
+      data.forEach(g => addGame(g, src.label));
+    });
+
+    const all = Object.values(games);
+    const now = Date.now();
+    const played = all
+      .filter(g => g.played)
+      .sort((a, b) => new Date(b.gameDate) - new Date(a.gameDate))
+      .slice(0, 5);
+    const upcoming = all
+      .filter(g => !g.played && new Date(g.gameDate).getTime() >= now - 12 * 3600 * 1000)
+      .sort((a, b) => new Date(a.gameDate) - new Date(b.gameDate))
+      .slice(0, 5);
+
+    const result = { teamId, played, upcoming, failed };
+    if (!failed) _opponentListCache[cacheKey] = { at: Date.now(), result };
+    return res.status(200).json(result);
+   } catch(e) { return res.status(502).json({ error: 'MinFotboll svarar inte: ' + e.message }); }
+  }
+
+  // Rakip takım kadrosu — MinFotboll'dan taze, doğum yılı/GP varsa cache'ten
+  if (action === 'opponentsquad') {
+   try {
+    const teamId = parseInt(req.query.teamId);
+    if (!teamId) return res.status(400).json({ error: 'teamId krävs' });
+
+    const mfToken = await getMinfotbollToken();
+    const [roster, cached] = await Promise.all([
+      minfotbollGetSafe(`/api/teamapi/initplayersadminvc?TeamID=${teamId}`, mfToken),
+      supabaseGet(`/opponent_players?team_id=eq.${teamId}&select=*`).catch(() => null),
+    ]);
+    // null = MinFotboll yanıt vermedi; [] = takımın yayınlanmış kadrosu yok
+    if (!Array.isArray(roster)) {
+      return res.status(502).json({ error: 'MinFotboll svarade inte — försök igen' });
+    }
+
+    const cacheMap = {};
+    if (Array.isArray(cached)) cached.forEach(c => { cacheMap[c.player_id] = c; });
+
+    const players = roster.map(p => {
+      const c = cacheMap[p.PlayerID];
+      const fresh = opponentCacheIsFresh(c);
+      return {
+        playerId: p.PlayerID,
+        teamPlayerId: p.TeamPlayerID,
+        name: p.FullName,
+        shirt: p.ShirtNumberString || '',
+        position: p.Position || '',
+        thumbnail: p.ThumbnailURL || '',
+        birthYear: fresh ? c.year_of_birth : null,
+        seasons: fresh ? (c.seasons || []) : null,
+        cached: fresh,
+      };
+    });
+
+    players.sort((a, b) =>
+      (parseInt(a.shirt, 10) || 999) - (parseInt(b.shirt, 10) || 999) ||
+      a.name.localeCompare(b.name, 'sv'));
+
+    return res.status(200).json({ teamId, players });
+   } catch(e) { return res.status(502).json({ error: 'MinFotboll svarar inte: ' + e.message }); }
+  }
+
+  // Tek rakip oyuncu — doğum yılı + sezon bazında GP (cache'lenir)
+  if (action === 'opponentplayer') {
+   try {
+    const teamId = parseInt(req.query.teamId);
+    const playerId = parseInt(req.query.playerId);
+    const teamPlayerId = parseInt(req.query.teamPlayerId) || 0;
+    if (!teamId || !playerId) return res.status(400).json({ error: 'teamId och playerId krävs' });
+
+    if (req.query.refresh !== '1') {
+      const rows = await supabaseGet(`/opponent_players?team_id=eq.${teamId}&player_id=eq.${playerId}&select=*&limit=1`).catch(() => null);
+      const c = Array.isArray(rows) && rows[0];
+      if (opponentCacheIsFresh(c)) {
+        return res.status(200).json({
+          playerId, teamPlayerId: c.team_player_id, name: c.full_name, shirt: c.shirt_number,
+          position: c.position, thumbnail: c.thumbnail, birthYear: c.year_of_birth,
+          seasons: c.seasons || [], cached: true,
+        });
+      }
+    }
+
+    const mfToken = await getMinfotbollToken();
+    const [profile, statsTable] = await Promise.all([
+      teamPlayerId
+        ? minfotbollGetSafe(`/api/playerapi/initplayerprofile?TeamPlayerID=${teamPlayerId}&GamePlayerID=0`, mfToken)
+        : Promise.resolve(null),
+      minfotbollGetSafe(`/api/statisticstableapi/initplayerprofilestatistics?PlayerID=${playerId}`, mfToken),
+    ]);
+
+    const pv = (profile && profile.PlayerForDetailsView) || null;
+    const seasons = parseSeasonStats(statsTable);
+
+    const row = {
+      team_id: teamId,
+      player_id: playerId,
+      team_player_id: teamPlayerId || null,
+      full_name: pv ? pv.FullName : null,
+      shirt_number: pv ? (pv.ShirtNumberString || null) : null,
+      position: pv ? (pv.Position || null) : null,
+      year_of_birth: (pv && pv.YearOfBirth) || null,
+      thumbnail: pv ? (pv.ThumbnailURL || null) : null,
+      seasons,
+      synced_at: new Date().toISOString(),
+    };
+    await supabaseUpsert('/opponent_players?on_conflict=team_id,player_id', row).catch(() => null);
+
+    return res.status(200).json({
+      playerId, teamPlayerId, name: row.full_name, shirt: row.shirt_number,
+      position: row.position, thumbnail: row.thumbnail, birthYear: row.year_of_birth,
+      seasons, cached: false,
+    });
+   } catch(e) { return res.status(502).json({ error: 'MinFotboll svarar inte: ' + e.message }); }
   }
 
   res.status(400).json({ error: 'Ogiltig åtgärd' });

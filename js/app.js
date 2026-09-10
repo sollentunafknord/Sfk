@@ -58,6 +58,7 @@ function adminTab(tab) {
   if (tab === 'parametrar') loadActiveTeams();
   if (tab === 'myclub' && typeof loadMyclubActivities === 'function' && !_myclubActivities.length) loadMyclubActivities();
   if (tab === 'dashboard' && typeof loadDashboard === 'function') loadDashboard();
+  if (tab === 'dashboard' && typeof fillOpponentTeamSelect === 'function') fillOpponentTeamSelect();
 }
 
 function oyuncuTab(tab) {

@@ -153,6 +153,28 @@
 
       <!-- DASHBOARD TAB -->
       <div id="adminDashboard" style="display:none;">
+        <!-- Motståndarspelare: eget block bredvid dashboardContent, som byggs om vid varje loadDashboard() -->
+        <div id="dashboardOpponents" style="margin-bottom:1.5rem;">
+          <div class="section-title">🆚 Motståndarspelare</div>
+          <div class="filter-bar">
+            <div>
+              <label>Vårt lag</label>
+              <select id="opponentOurTeam" onchange="loadTeamMatches()">
+                <option value="">Välj lag...</option>
+              </select>
+            </div>
+            <div><button class="btn btn-secondary" onclick="loadTeamMatches(true)">↻ Hämta matcher</button></div>
+          </div>
+          <div class="matches-layout">
+            <div class="matches-list-col">
+              <div id="oppMatchList"><div class="empty-state">Välj ett lag för att se matcher</div></div>
+            </div>
+            <div class="matches-detail-col">
+              <div id="opponentSquad"><div class="empty-state">Välj en match</div></div>
+            </div>
+          </div>
+        </div>
+
         <div id="dashboardContent"><div class="empty-state"><div class="spinner" style="margin:0 auto;"></div></div></div>
       </div>
 
@@ -731,6 +753,7 @@
 <script src="/js/omkladningsrum.js"></script>
 <script src="/js/cv.js"></script>
 <script src="/js/matches.js"></script>
+<script src="/js/opponents.js"></script>
 <script src="/js/users.js"></script>
 <script src="/js/deploy.js"></script>
 <script src="/js/app.js"></script>
