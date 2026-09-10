@@ -668,13 +668,21 @@ module.exports = async (req, res) => {
     // Dinamik roster yükle
     const { playerIds: SFK_PLAYER_IDS_DYN, players: SFK_PLAYERS_DYN } = await getDynamicRoster(mfToken);
 
-    const [overview, lineups, header, rosterData, timelineData] = await Promise.all([
-      minfotbollGet(`/api/magazinegameviewapi/initgameoverview?GameID=${gameId}`, mfToken),
-      minfotbollGet(`/api/magazinegameviewapi/initgamelineups?GameID=${gameId}`, mfToken),
-      minfotbollGet(`/api/gameapi/getgameheaderinfo?id=${gameId}`, mfToken),
-      minfotbollGet(`/api/followgameapi/initlivetimelineblurbs?GameID=${gameId}`, mfToken),
-      minfotbollGet(`/api/followgameapi/initlivetimelineblurbs?GameID=${gameId}`, mfToken),
+    // minfotbollGetSafe: MinFotboll anlık olarak yanıt vermeyip ~20 sn takılabiliyor;
+    // timeout + tekrar deneme olmadan tek bir ECONNRESET tüm maç detayını 500 yapıyordu.
+    const [overviewRaw, lineupsRaw, headerRaw, rosterDataRaw] = await Promise.all([
+      minfotbollGetSafe(`/api/magazinegameviewapi/initgameoverview?GameID=${gameId}`, mfToken),
+      minfotbollGetSafe(`/api/magazinegameviewapi/initgamelineups?GameID=${gameId}`, mfToken),
+      minfotbollGetSafe(`/api/gameapi/getgameheaderinfo?id=${gameId}`, mfToken),
+      minfotbollGetSafe(`/api/followgameapi/initlivetimelineblurbs?GameID=${gameId}`, mfToken),
     ]);
+    if (!lineupsRaw && !headerRaw) {
+      return res.status(502).json({ error: 'MinFotboll svarade inte — försök igen' });
+    }
+    const overview = overviewRaw || null;
+    const lineups = lineupsRaw || {};
+    const header = headerRaw || {};
+    const rosterData = rosterDataRaw || null;
 
     // Rapportörleri bul - her iki takımın TeamStaff'ından MemberID → isim
     const memberMap = {};
@@ -777,8 +785,11 @@ module.exports = async (req, res) => {
       squadPlayerIds.add(p.PlayerID);
       playerIsInSquad[p.PlayerID] = true;
       // Players = starter (IsSubstitute:false), Substitutes = yedek (IsSubstitute:true)
-      playerIsStarter[p.PlayerID] = !isSubstitute && p.IsSubstitute === false;
-      playerShirtNos[p.PlayerID] = p.ShirtNumber || SFK_PLAYERS_DYN[p.PlayerID]?.shirt || 0;
+      playerIsStarter[p.PlayerID] = !isSubstitute && p.IsSubstitute !== true;
+      // Maç kadrosunda ShirtNumber HEP 0 gelir; gerçek numara ShirtNumberString'te.
+      // Bu maça özel numara, takım listesindeki (eskimiş olabilen) numaradan önce gelir.
+      playerShirtNos[p.PlayerID] = parseInt(p.ShirtNumberString, 10) || p.ShirtNumber
+        || SFK_PLAYERS_DYN[p.PlayerID]?.shirt || 0;
       playerThumbnails[p.PlayerID] = p.ThumbnailURL || null;
       playerPositions[p.PlayerID] = p.Position || '';
     };
@@ -795,18 +806,42 @@ module.exports = async (req, res) => {
     }
 
     // ADIM 2: LINEUP — İlk 11'i işaretle (GameLineUpPlayers varsa override et)
-    if (lineupTeam && lineupTeam.GameLineUpPlayers && lineupTeam.GameLineUpPlayers.length > 0) {
-      // Önce hepsini non-starter yap
-      squadPlayerIds.forEach(pid => { playerIsStarter[pid] = false; });
-      lineupTeam.GameLineUpPlayers.forEach(p => {
-        if (!SFK_PLAYER_IDS_DYN.has(p.PlayerID)) return;
-        squadPlayerIds.add(p.PlayerID);
-        playerIsInSquad[p.PlayerID] = true;
-        playerIsStarter[p.PlayerID] = true;
-        playerPositions[p.PlayerID] = p.Position || playerPositions[p.PlayerID] || '';
-        playerShirtNos[p.PlayerID] = playerShirtNos[p.PlayerID] || p.ShirtNumber || SFK_PLAYERS_DYN[p.PlayerID]?.shirt || 0;
-        playerThumbnails[p.PlayerID] = playerThumbnails[p.PlayerID] || p.ThumbnailURL || null;
+    //
+    // DİKKAT: GameLineUpPlayers kayıtlarında PlayerID null gelir — sadece GamePlayerID
+    // dolu. Bu yüzden önce GameTeamRoster'dan GamePlayerID -> PlayerID haritası kurup
+    // eşleştiriyoruz. (Eskiden PlayerID ile eşleştiriliyordu; hiçbir oyuncu tutmuyor,
+    // ama "önce hepsini non-starter yap" satırı çalıştığı için ADIM 1'in doğru bulduğu
+    // ilk 11 siliniyordu → tüm oyuncular "Bänk" ve tam maç oynayanlar 0 dakika.)
+    const gamePlayerIdToPlayerId = {};
+    if (rosterTeam) {
+      [rosterTeam.Players, rosterTeam.Substitutes].forEach(arr => {
+        if (Array.isArray(arr)) arr.forEach(p => {
+          if (p.GamePlayerID && p.PlayerID) gamePlayerIdToPlayerId[p.GamePlayerID] = p.PlayerID;
+        });
       });
+    }
+
+    if (lineupTeam && Array.isArray(lineupTeam.GameLineUpPlayers) && lineupTeam.GameLineUpPlayers.length > 0) {
+      const lineupPids = [];
+      lineupTeam.GameLineUpPlayers.forEach(p => {
+        const pid = p.PlayerID || gamePlayerIdToPlayerId[p.GamePlayerID] || null;
+        if (!pid || !SFK_PLAYER_IDS_DYN.has(pid)) return;
+        lineupPids.push({ pid, p });
+      });
+
+      // Hiçbiri çözülemediyse lineup'a güvenme — ADIM 1'in kadro bilgisi kalsın
+      if (lineupPids.length > 0) {
+        squadPlayerIds.forEach(pid => { playerIsStarter[pid] = false; });
+        lineupPids.forEach(({ pid, p }) => {
+          squadPlayerIds.add(pid);
+          playerIsInSquad[pid] = true;
+          playerIsStarter[pid] = true;
+          playerPositions[pid] = p.Position || playerPositions[pid] || '';
+          playerShirtNos[pid] = playerShirtNos[pid] || parseInt(p.ShirtNumberString, 10) || p.ShirtNumber
+            || SFK_PLAYERS_DYN[pid]?.shirt || 0;
+          playerThumbnails[pid] = playerThumbnails[pid] || p.ThumbnailURL || null;
+        });
+      }
     }
 
     // ADIM 3: DEĞİŞİKLİKLER — Kim girdi/çıktı, hangi dakikada
