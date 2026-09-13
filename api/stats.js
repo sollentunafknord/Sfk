@@ -261,7 +261,8 @@ module.exports = async (req, res) => {
 
     // Dinamik roster yükle
     const mfToken = await getMinfotbollToken().catch(() => null);
-    const DYNAMIC_PLAYERS = mfToken ? await getDynamicRoster(mfToken) : DYNAMIC_PLAYERS;
+    // Kendine referans veren eski hali token alınamadığında ReferenceError atıyordu
+    const DYNAMIC_PLAYERS = mfToken ? await getDynamicRoster(mfToken) : SFK_PLAYERS;
 
     // Maçları filtrele
     let matchQuery = '/matches?select=*';
@@ -274,26 +275,28 @@ module.exports = async (req, res) => {
       return res.status(200).json({ players: [], totalGames: 0 });
     }
 
-    // teamId varsa: o takımın adını bul ve maçları filtrele
+    // teamId varsa maçları takıma göre filtrele. matches.team_id kesin bilgi;
+    // takım adını maç adlarında aramak rakip takıma da takılıyordu (P15A seçilince
+    // rakibi "Järfälla FF Academy JFA P15A" olan P16 maçı listeye giriyordu).
     if (teamId) {
-      const activeTeams = await supabaseGet('/active_teams?select=team_id,team_name');
-      const teamObj = Array.isArray(activeTeams) ? activeTeams.find(t => t.team_id === parseInt(teamId)) : null;
-      const teamName = teamObj?.team_name;
-      if (teamName) {
-        matches = matches.filter(m => {
-          const home = (m.home_team || '').toLowerCase();
-          const away = (m.away_team || '').toLowerCase();
-          const tn = teamName.toLowerCase();
-          // Özel eşleşmeler
-          const aliases = { 'p16u': ['sollentuna utveckling', 'p16 u', 'p16u'] };
-          const checkAliases = Object.entries(aliases).find(([k]) => tn.includes(k));
-          if (checkAliases) {
-            const terms = checkAliases[1];
-            return terms.some(t => home.includes(t)) || terms.some(t => away.includes(t));
-          }
-          return home.includes(tn) || away.includes(tn);
-        });
+      const tid = parseInt(teamId);
+      // team_id'si olmayan eski kayıtlar için isim eşleşmesi yedekte kalsın
+      const needsNameFallback = matches.some(m => m.team_id == null);
+      let terms = [];
+      if (needsNameFallback) {
+        const activeTeams = await supabaseGet('/active_teams?select=team_id,team_name');
+        const teamObj = Array.isArray(activeTeams) ? activeTeams.find(t => t.team_id === tid) : null;
+        const tn = (teamObj?.team_name || '').toLowerCase();
+        const aliases = { 'p16u': ['sollentuna utveckling', 'p16 u', 'p16u'] };
+        const aliasKey = Object.keys(aliases).find(k => tn.includes(k));
+        terms = aliasKey ? aliases[aliasKey] : (tn ? [tn] : []);
       }
+      matches = matches.filter(m => {
+        if (m.team_id != null) return m.team_id === tid;
+        const home = (m.home_team || '').toLowerCase();
+        const away = (m.away_team || '').toLowerCase();
+        return terms.some(t => home.includes(t) || away.includes(t));
+      });
     }
 
     // Lig ismine göre filtrele

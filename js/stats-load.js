@@ -215,6 +215,16 @@ function updateLeagueListByTeam() {
   const selectedTeamId = parseInt(document.getElementById('statsTeam')?.value) || null;
   let filteredMatches = matches;
 
+  // team_id üzerinden filtrele; takım adını maç adlarında aramak rakibe de
+  // takılıyor (P15A seçilince rakibi "... JFA P15A" olan P16 maçı geliyordu).
+  // İsim eşleşmesi sadece team_id'si olmayan eski kayıtlar için yedekte.
+  const matchTeam = (m, ids, terms) => {
+    if (m.team_id != null) return ids.includes(m.team_id);
+    const home = (m.home_team || '').toLowerCase();
+    const away = (m.away_team || '').toLowerCase();
+    return terms.some(t => t && (home.includes(t) || away.includes(t)));
+  };
+
   if (selectedTeamId && window._activeTeamsCache) {
     // Belirli bir takım seçili — sadece o takımın maçları
     const team = window._activeTeamsCache.find(t => t.team_id === selectedTeamId);
@@ -224,22 +234,15 @@ function updateLeagueListByTeam() {
       const sfkAliases = { 'p16u': ['sollentuna utveckling', 'p16 u', 'p16u'] };
       const aliasKey = Object.keys(sfkAliases).find(k => tn.includes(k));
       const terms = aliasKey ? sfkAliases[aliasKey] : [tn];
-      const byName = matches.filter(m => {
-        const home = (m.home_team || '').toLowerCase();
-        const away = (m.away_team || '').toLowerCase();
-        return terms.some(t => home.includes(t) || away.includes(t));
-      });
-      if (byName.length > 0) filteredMatches = byName;
+      const byTeam = matches.filter(m => matchTeam(m, [selectedTeamId], terms));
+      if (byTeam.length > 0) filteredMatches = byTeam;
     }
   } else if (!selectedTeamId && state.user.role === 'antrenor' && window._activeTeamsCache && window._activeTeamsCache.length > 0) {
     // Antrenör + "Alla lag" — sadece kendi takımlarının maçları
+    const teamIds = window._activeTeamsCache.map(t => t.team_id);
     const teamNames = window._activeTeamsCache.map(t => (t.team_name || '').toLowerCase());
-    const byName = matches.filter(m => {
-      const home = (m.home_team || '').toLowerCase();
-      const away = (m.away_team || '').toLowerCase();
-      return teamNames.some(tn => tn && (home.includes(tn) || away.includes(tn)));
-    });
-    if (byName.length > 0) filteredMatches = byName;
+    const byTeam = matches.filter(m => matchTeam(m, teamIds, teamNames));
+    if (byTeam.length > 0) filteredMatches = byTeam;
   }
 
   const leagues = [...new Set(filteredMatches.map(m => m.league_name).filter(Boolean))].sort();
