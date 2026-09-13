@@ -403,6 +403,58 @@ function getGameType(leagueName) {
   return 'lig';
 }
 
+// ===================== LİG KEŞFİ =====================
+// Sabit LEAGUES listesi elle güncelleniyor. Aktif edilen bir takımın ligi
+// listede yoksa o takımın maçları sadece takım sayfasındaki son 5 maçla sınırlı
+// kalıyordu (P15A: 21 lig maçından 5'i görünüyordu). Burada lig ID'lerini
+// MinFotboll'dan çıkarıp listeyi tamamlıyoruz.
+const SFK_CLUB_ID = 1917;
+const LEAGUE_DISCOVERY_MS = 10 * 60 * 1000;
+let _leagueDiscoveryCache = { at: 0, key: '', leagues: [] };
+
+async function discoverLeagues(teamIds, sites, mfToken) {
+  const key = [...teamIds].sort((a, b) => a - b).join(',');
+  const now = Date.now();
+  if (_leagueDiscoveryCache.key === key && now - _leagueDiscoveryCache.at < LEAGUE_DISCOVERY_MS) {
+    return _leagueDiscoveryCache.leagues;
+  }
+
+  const out = new Map();
+  const addLeague = (g, teamId) => {
+    if (!g || !g.LeagueID) return;
+    const tid = teamId
+      || (teamIds.includes(g.HomeTeamID) ? g.HomeTeamID
+      :  (teamIds.includes(g.AwayTeamID) ? g.AwayTeamID : null));
+    if (!tid) return;
+    const mapKey = `${g.LeagueID}|${tid}`;
+    if (out.has(mapKey)) return;
+    const label = g.LeagueDisplayName || g.LeagueName || '—';
+    out.set(mapKey, { id: g.LeagueID, team: tid, label, type: getGameType(label) });
+  };
+
+  // 1) Takım sayfasındaki son maçlar — takımın içinde bulunduğu seriyi verir
+  teamIds.forEach(tid => {
+    const blurbs = sites && sites[tid] && sites[tid].MagazineBlurbs;
+    if (Array.isArray(blurbs)) blurbs.forEach(b => addLeague(b.GameHeaderInfo, tid));
+  });
+
+  // 2) Kulübün gelecek maçları — son 5 maçı tek ligde geçmiş takımın kupa/
+  // träningsmatch ligleri ancak buradan çıkıyor
+  let lastGameId = 0;
+  for (let p = 0; p < 10; p++) {
+    const batch = await minfotbollGetSafe(
+      `/api/clubapi/getcomingclubgames?ClubID=${SFK_CLUB_ID}&LastGameID=${lastGameId}`, mfToken);
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    batch.forEach(g => addLeague(g, null));
+    lastGameId = batch[batch.length - 1].GameID;
+    if (batch.length < 10) break;
+  }
+
+  const leagues = [...out.values()];
+  _leagueDiscoveryCache = { at: now, key, leagues };
+  return leagues;
+}
+
 // ===================== MOTSTÅNDARE (rakip takım oyuncuları) =====================
 // Kadro + doğum yılı + sezon bazında GP. MinFotboll'un profil endpoint'i yavaş ve
 // sık throttle ediyor, o yüzden sonuçlar opponent_players tablosunda cache'leniyor.
@@ -572,7 +624,28 @@ module.exports = async (req, res) => {
       allowedTeamIds = new Set(Array.isArray(userTeams) ? userTeams.map(t => t.team_id) : []);
     }
 
-    const filteredLeagues = LEAGUES.filter(l => {
+    // Aktif takımlar — hem lig keşfi hem MagazineBlurbs fallback'i bunu kullanıyor
+    const activeTeams = await supabaseGet('/active_teams?is_active=eq.true&select=team_id,team_name');
+    let activeTeamIds = Array.isArray(activeTeams) ? activeTeams.map(t => t.team_id) : [74782, 398871, 457347, 402766];
+    // Tränare için sadece kendi takımları
+    if (allowedTeamIds) activeTeamIds = activeTeamIds.filter(id => allowedTeamIds.has(id));
+
+    // Takım sayfaları: hem lig keşfi hem fallback maçları aynı yanıttan geliyor
+    const sites = {};
+    await mapPool(activeTeamIds, 8, async (teamId) => {
+      sites[teamId] = await minfotbollGetSafe(`/api/teamapi/initteamsite?teamId=${teamId}`, mfToken);
+    });
+
+    // Sabit liste + keşfedilen ligler. Çakışmada sabit liste kazanır: oradaki
+    // etiket/tip elle verilmiş ve geçmiş sezon ligleri sadece orada duruyor.
+    const leagueMap = new Map();
+    LEAGUES.forEach(l => leagueMap.set(`${l.id}|${l.team}`, l));
+    (await discoverLeagues(activeTeamIds, sites, mfToken)).forEach(l => {
+      const key = `${l.id}|${l.team}`;
+      if (!leagueMap.has(key)) leagueMap.set(key, l);
+    });
+
+    const filteredLeagues = [...leagueMap.values()].filter(l => {
       if (allowedTeamIds && !allowedTeamIds.has(l.team)) return false;
       if (gameType && gameType !== 'hepsi') return l.type === gameType;
       return true;
@@ -580,78 +653,76 @@ module.exports = async (req, res) => {
 
     const allGames = [];
     const seen = new Set();
+    const inRange = (gameTime) => {
+      if (dateFrom && new Date(gameTime) < new Date(dateFrom)) return false;
+      if (dateTo && new Date(gameTime) > new Date(dateTo + 'T23:59:59')) return false;
+      return true;
+    };
 
-    await Promise.all(filteredLeagues.map(async (league) => {
-      try {
-        const games = await minfotbollGet(`/api/leagueapi/getleaguegames?leagueId=${league.id}`, mfToken);
-        if (!Array.isArray(games)) return;
-        games.forEach(g => {
-          if (seen.has(g.GameID)) return;
-          if (g.HomeTeamID !== league.team && g.AwayTeamID !== league.team) return;
-          if (g.GameStatusID !== 3) return;
-          if (dateFrom && new Date(g.GameTime) < new Date(dateFrom)) return;
-          if (dateTo && new Date(g.GameTime) > new Date(dateTo + 'T23:59:59')) return;
-          seen.add(g.GameID);
-          allGames.push({
-            gameId: g.GameID,
-            gameDate: g.GameTime,
-            homeTeam: g.HomeTeamDisplayName,
-            awayTeam: g.AwayTeamDisplayName,
-            homeScore: g.HomeTeamScore,
-            awayScore: g.AwayTeamScore,
-            homeLogo: g.HomeTeamClubLogoURL || '',
-            awayLogo: g.AwayTeamClubLogoURL || '',
-            homeTeamId: g.HomeTeamID,
-            awayTeamId: g.AwayTeamID,
-            leagueName: league.label,
-            gameType: league.type,
-            teamId: league.team,
-          });
+    // Keşifle birlikte lig sayısı arttı; MinFotboll aynı anda çok istekte takılıyor
+    await mapPool(filteredLeagues, 8, async (league) => {
+      const games = await minfotbollGetSafe(`/api/leagueapi/getleaguegames?leagueId=${league.id}`, mfToken);
+      if (!Array.isArray(games)) return;
+      games.forEach(g => {
+        if (seen.has(g.GameID)) return;
+        if (g.HomeTeamID !== league.team && g.AwayTeamID !== league.team) return;
+        if (g.GameStatusID !== 3) return;
+        if (!inRange(g.GameTime)) return;
+        seen.add(g.GameID);
+        allGames.push({
+          gameId: g.GameID,
+          gameDate: g.GameTime,
+          homeTeam: g.HomeTeamDisplayName,
+          awayTeam: g.AwayTeamDisplayName,
+          homeScore: g.HomeTeamScore,
+          awayScore: g.AwayTeamScore,
+          homeLogo: g.HomeTeamClubLogoURL || '',
+          awayLogo: g.AwayTeamClubLogoURL || '',
+          homeTeamId: g.HomeTeamID,
+          awayTeamId: g.AwayTeamID,
+          leagueName: league.label,
+          gameType: league.type,
+          teamId: league.team,
         });
-      } catch(e) {}
-    }));
+      });
+    });
 
-    // MagazineBlurbs fallback — aktif takımlar için bilinmeyen ligleri de çek
-    const activeTeams = await supabaseGet('/active_teams?is_active=eq.true&select=team_id,team_name');
-    let activeTeamIds = Array.isArray(activeTeams) ? activeTeams.map(t => t.team_id) : [74782, 398871, 457347, 402766];
-    // Tränare için sadece kendi takımları
-    if (allowedTeamIds) {
-      activeTeamIds = activeTeamIds.filter(id => allowedTeamIds.has(id));
-    }
-
-    await Promise.all(activeTeamIds.map(async (teamId) => {
-      try {
-        const site = await minfotbollGet(`/api/teamapi/initteamsite?teamId=${teamId}`, mfToken);
-        if (!site?.MagazineBlurbs) return;
-        site.MagazineBlurbs.forEach(b => {
-          const g = b.GameHeaderInfo;
-          if (!g) return;
-          if (seen.has(g.GameID)) return;
-          if (g.HomeTeamID !== teamId && g.AwayTeamID !== teamId) return;
-          if (g.GameStatusID !== 3) return;
-          if (dateFrom && new Date(g.GameTime) < new Date(dateFrom)) return;
-          if (dateTo && new Date(g.GameTime) > new Date(dateTo + 'T23:59:59')) return;
-          seen.add(g.GameID);
-          const teamInfo = Array.isArray(activeTeams) ? activeTeams.find(t => t.team_id === teamId) : null;
-          allGames.push({
-            gameId    : g.GameID,
-            gameDate  : g.GameTime,
-            homeTeam  : g.HomeTeamDisplayName,
-            awayTeam  : g.AwayTeamDisplayName,
-            homeScore : g.HomeTeamScore,
-            awayScore : g.AwayTeamScore,
-            homeLogo  : g.HomeTeamClubLogoURL || '',
-            awayLogo  : g.AwayTeamClubLogoURL || '',
-            homeTeamId: g.HomeTeamID,
-            awayTeamId: g.AwayTeamID,
-            leagueName: g.LeagueDisplayName || '—',
-            gameType  : 'hazirlik',
-            teamId    : teamId,
-            teamName  : teamInfo?.team_name || '',
-          });
+    // MagazineBlurbs fallback — lig ID'si hiçbir keşif kaynağında geçmeyen
+    // maçlar (tek seferlik turnuvalar vb.) buradan yakalanıyor
+    activeTeamIds.forEach(teamId => {
+      const blurbs = sites[teamId] && sites[teamId].MagazineBlurbs;
+      if (!Array.isArray(blurbs)) return;
+      const teamInfo = Array.isArray(activeTeams) ? activeTeams.find(t => t.team_id === teamId) : null;
+      blurbs.forEach(b => {
+        const g = b.GameHeaderInfo;
+        if (!g) return;
+        if (seen.has(g.GameID)) return;
+        if (g.HomeTeamID !== teamId && g.AwayTeamID !== teamId) return;
+        if (g.GameStatusID !== 3) return;
+        if (!inRange(g.GameTime)) return;
+        // Tip lig adından türetiliyor; sabit 'hazirlik' matchtyp filtresini bozuyordu
+        const label = g.LeagueDisplayName || g.LeagueName || '—';
+        const type = getGameType(label);
+        if (gameType && gameType !== 'hepsi' && type !== gameType) return;
+        seen.add(g.GameID);
+        allGames.push({
+          gameId    : g.GameID,
+          gameDate  : g.GameTime,
+          homeTeam  : g.HomeTeamDisplayName,
+          awayTeam  : g.AwayTeamDisplayName,
+          homeScore : g.HomeTeamScore,
+          awayScore : g.AwayTeamScore,
+          homeLogo  : g.HomeTeamClubLogoURL || '',
+          awayLogo  : g.AwayTeamClubLogoURL || '',
+          homeTeamId: g.HomeTeamID,
+          awayTeamId: g.AwayTeamID,
+          leagueName: label,
+          gameType  : type,
+          teamId    : teamId,
+          teamName  : teamInfo?.team_name || '',
         });
-      } catch(e) {}
-    }));
+      });
+    });
 
     allGames.sort((a,b) => new Date(b.gameDate) - new Date(a.gameDate));
     return res.status(200).json(allGames);

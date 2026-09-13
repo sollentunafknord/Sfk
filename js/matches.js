@@ -107,7 +107,10 @@ function renderMatchList(matches) {
     const d = new Date(m.gameDate);
     const dateStr = d.toLocaleDateString('sv-SE', {day:'2-digit',month:'short',year:'numeric'});
     const typeClass = 'type-' + m.gameType;
-    const SFK_IDS = [398871, 74782, 512525, 68503, 201387, 457347, 402766, 511901];
+    // teamId yoksa (eski manuel kayıt) aktif takım listesinden çöz — sabit liste
+    // yeni aktif edilen takımları (P15A vb.) tanımıyordu
+    const SFK_IDS = (window._activeTeamsCache || []).map(t => t.team_id)
+      .concat([398871, 74782, 512525, 68503, 201387, 457347, 402766, 511901]);
     const isHome = m.teamId ? (m.homeTeamId === m.teamId) : SFK_IDS.includes(m.homeTeamId);
     const sfkLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Sollentuna_FK_logo_%282022%29.svg/960px-Sollentuna_FK_logo_%282022%29.svg.png';
     const opponentLogo = isHome ? m.awayLogo : m.homeLogo;
