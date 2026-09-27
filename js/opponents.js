@@ -13,6 +13,7 @@ let _oppMatches = null;        // { teamId, played: [], upcoming: [], failed }
 let _oppSquad = null;          // { teamId, teamName, logo, gameLabel, players: [] }
 let _oppExpanded = new Set();  // açık olan oyuncu satırları (playerId)
 let _oppLoadToken = 0;         // seçim değişince eski istekleri yoksaymak için
+let _oppView = 'match';        // 'match' = sadece maç kadrosu (~18), 'all' = tüm trupp
 
 function oppEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -115,19 +116,24 @@ async function openMatchOpponent(gameId) {
   _oppSquad = {
     gameId, teamId: m.opponentTeamId, teamName: m.opponentName,
     logo: m.opponentLogo, gameLabel: oppDate(m.gameDate) + ' · ' + m.leagueName,
-    players: [],
+    players: [], match: null,
   };
+  _oppView = 'match';
+  _oppFilling = new Set();
   renderTeamMatches();
 
   const el = document.getElementById('opponentSquad');
   el.innerHTML = '<div class="empty-state">Hämtar trupp...</div>';
 
   try {
-    const r = await fetch('/api/admin?action=opponentsquad&teamId=' + m.opponentTeamId, {headers: authHeaders()});
+    // side = rakibin tarafı; biz evdeysek rakip deplasmanda
+    const r = await fetch('/api/admin?action=opponentsquad&teamId=' + m.opponentTeamId +
+                          '&gameId=' + gameId + '&side=' + (m.isHome ? 'away' : 'home'), {headers: authHeaders()});
     const data = await r.json();
     if (myToken !== _oppLoadToken) return;
     if (!data.players) throw new Error(data.error || 'Kunde inte hämta trupp');
     _oppSquad.players = data.players;
+    _oppSquad.match = data.match || null;
     renderOpponentSquad();
     fillOpponentPlayers(myToken, false);
   } catch(e) {
@@ -144,11 +150,31 @@ function renderOpponentSquadSoon() {
   _oppRenderTimer = setTimeout(() => { _oppRenderTimer = null; renderOpponentSquad(); }, 400);
 }
 
+function oppHasMatchRoster() {
+  return !!(_oppSquad && _oppSquad.match && _oppSquad.match.status === 'ok');
+}
+
+// Ekranda görünen oyuncular: maç kadrosu yayınlandıysa ve o görünüm seçiliyse sadece onlar
+function oppVisiblePlayers() {
+  if (!_oppSquad) return [];
+  if (_oppView === 'match' && oppHasMatchRoster()) return _oppSquad.players.filter(p => p.inMatch);
+  return _oppSquad.players.filter(p => !p.notInSquad || p.inMatch);
+}
+
+function setOpponentView(view) {
+  _oppView = view;
+  renderOpponentSquad();
+  fillOpponentPlayers(_oppLoadToken, false);   // "hela truppen"a geçince eksikleri doldur
+}
+
 // Eksik oyuncuları 3'erli paralel doldur — MinFotboll tek tek sorguda yavaş.
+// Sadece görünenler: maç kadrosu 18 kişiyse 30 kişilik truppu beklemeye gerek yok.
+let _oppFilling = new Set();   // şu an sorgulanan playerId'ler (çift istek olmasın)
 async function fillOpponentPlayers(myToken, force) {
   if (!_oppSquad) return;
   const teamId = _oppSquad.teamId;
-  const todo = _oppSquad.players.filter(p => force || !p.cached);
+  const todo = oppVisiblePlayers().filter(p => (force || !p.cached) && !_oppFilling.has(p.playerId));
+  todo.forEach(p => _oppFilling.add(p.playerId));
   if (!todo.length) { renderOpponentSquad(); return; }
 
   let i = 0;
@@ -158,6 +184,7 @@ async function fillOpponentPlayers(myToken, force) {
       try {
         const url = '/api/admin?action=opponentplayer&teamId=' + teamId +
                     '&playerId=' + p.playerId + '&teamPlayerId=' + (p.teamPlayerId || 0) +
+                    '&gamePlayerId=' + (p.gamePlayerId || 0) +
                     (force ? '&refresh=1' : '');
         const r = await fetch(url, {headers: authHeaders()});
         const d = await r.json();
@@ -172,6 +199,7 @@ async function fillOpponentPlayers(myToken, force) {
       } catch(e) {
         p.failed = true;
       }
+      _oppFilling.delete(p.playerId);
       if (myToken !== _oppLoadToken) return;
       renderOpponentSquadSoon();
     }
@@ -184,7 +212,9 @@ async function fillOpponentPlayers(myToken, force) {
 
 function refreshOpponentSquad() {
   if (!_oppSquad) return;
-  _oppSquad.players.forEach(p => { p.cached = false; p.failed = false; });
+  // Maç kadrosu gelmediyse (henüz yayınlanmamış / MinFotboll takıldı) kadroyu yeniden sor
+  if (_oppSquad.match && _oppSquad.match.status !== 'ok') { openMatchOpponent(_oppSquad.gameId); return; }
+  oppVisiblePlayers().forEach(p => { p.cached = false; p.failed = false; });
   renderOpponentSquad();
   fillOpponentPlayers(_oppLoadToken, true);
 }
@@ -193,7 +223,11 @@ function renderOpponentSquad() {
   const el = document.getElementById('opponentSquad');
   if (!_oppSquad) { el.innerHTML = '<div class="empty-state">Välj en match</div>'; return; }
 
-  const players = _oppSquad.players;
+  const hasMatch = oppHasMatchRoster();
+  const matchMode = hasMatch && _oppView === 'match';
+  const players = oppVisiblePlayers().slice();
+  // Maç kadrosunda önce ilk 11, sonra yedekler (her grup forma numarasına göre — backend sıralı)
+  if (matchMode) players.sort((a, b) => (b.starter ? 1 : 0) - (a.starter ? 1 : 0));
   const loaded = players.filter(p => p.cached).length;
   const pending = players.length - loaded;
   const thisYear = new Date().getFullYear();
@@ -202,10 +236,23 @@ function renderOpponentSquad() {
       <img src="${oppEsc(_oppSquad.logo)}" style="width:40px;height:40px;object-fit:contain;" onerror="this.style.display='none'">
       <div style="flex:1;min-width:0;">
         <div style="font-weight:700;font-size:1.05rem;">${oppEsc(_oppSquad.teamName)}</div>
-        <div style="font-size:0.78rem;color:var(--muted);">${oppEsc(_oppSquad.gameLabel)} · ${players.length} spelare${pending ? ' · hämtar ' + pending + ' kvar...' : ''}</div>
+        <div style="font-size:0.78rem;color:var(--muted);">${oppEsc(_oppSquad.gameLabel)} · ${players.length} spelare${matchMode ? ' i matchtruppen' : ''}${pending ? ' · hämtar ' + pending + ' kvar...' : ''}</div>
       </div>
       <button class="btn btn-secondary" style="font-size:0.8rem;padding:0.35rem 0.8rem;" onclick="refreshOpponentSquad()">↻ Uppdatera</button>
     </div>`;
+
+  const ms = _oppSquad.match && _oppSquad.match.status;
+  const squadCount = _oppSquad.players.filter(p => !p.notInSquad).length;
+  const tabBtn = (view, label) => `<button class="btn ${_oppView === view ? 'btn-primary' : 'btn-secondary'}"
+      style="font-size:0.78rem;padding:0.3rem 0.75rem;" onclick="setOpponentView('${view}')">${label}</button>`;
+  const viewBar = hasMatch
+    ? `<div style="display:flex;gap:0.4rem;margin-bottom:0.6rem;flex-wrap:wrap;">
+         ${tabBtn('match', 'Matchtrupp (' + _oppSquad.match.count + ')')}
+         ${tabBtn('all', 'Hela truppen (' + squadCount + ')')}
+       </div>`
+    : `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:0.6rem;">${
+         ms === 'failed' ? '⚠ Matchtruppen kunde inte hämtas från MinFotboll — visar hela truppen. Tryck ↻ för att försöka igen.'
+         : ms === 'unpublished' ? 'Matchtruppen är inte publicerad ännu — visar hela truppen.' : ''}</div>`;
 
   if (!players.length) { el.innerHTML = head + '<div class="empty-state">Truppen är inte publicerad i MinFotboll</div>'; return; }
 
@@ -232,9 +279,15 @@ function renderOpponentSquad() {
       }</td></tr>`;
     }
 
+    const role = !hasMatch ? '' : p.inMatch
+      ? `<span style="font-size:0.68rem;padding:0.05rem 0.4rem;border-radius:4px;margin-left:0.4rem;${p.starter
+          ? 'background:rgba(40,167,69,0.15);color:#28a745;">Start' : 'background:var(--surface2);color:var(--muted);">Avb'}</span>`
+      : '';
+    const lent = p.notInSquad ? '<span style="font-size:0.68rem;color:var(--muted);margin-left:0.4rem;">(ej i truppen)</span>' : '';
+
     return `<tr style="cursor:pointer;" onclick="toggleOpponentPlayer(${p.playerId})">
-        <td style="width:36px;">${oppEsc(p.shirt)}</td>
-        <td>${open ? '▾ ' : '▸ '}${oppEsc(p.name)}</td>
+        <td style="width:36px;">${oppEsc(p.matchShirt || p.shirt)}</td>
+        <td>${open ? '▾ ' : '▸ '}${oppEsc(p.name)}${role}${lent}</td>
         <td style="color:var(--muted);">${oppEsc(p.position)}</td>
         <td>${oppEsc(born)}</td>
         <td style="text-align:center;">${oppEsc(gpCur)}</td>
@@ -242,7 +295,7 @@ function renderOpponentSquad() {
       </tr>${detail}`;
   }).join('');
 
-  el.innerHTML = head + `<div class="table-wrap"><table>
+  el.innerHTML = head + viewBar + `<div class="table-wrap"><table>
       <thead><tr>
         <th>#</th><th>Namn</th><th>Position</th><th>Född</th>
         <th style="text-align:center;">GP ${thisYear}</th>

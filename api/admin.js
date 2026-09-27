@@ -2194,10 +2194,19 @@ if (action === 'clubgames') {
     const teamId = parseInt(req.query.teamId);
     if (!teamId) return res.status(400).json({ error: 'teamId krävs' });
 
+    // gameId verilirse o maçın kadrosu (max ~18 kişi) da çekilir; trupp 30 kişi
+    // olabilir ama maçta oynayacaklar bunlar. side = rakibin tarafı (home/away),
+    // roster.TeamID tutmazsa (kupa/turnuvada takım ID'si değişebiliyor) yedek sinyal.
+    const gameId = parseInt(req.query.gameId) || 0;
+    const side = req.query.side === 'home' || req.query.side === 'away' ? req.query.side : null;
+
     const mfToken = await getMinfotbollToken();
-    const [roster, cached] = await Promise.all([
+    const [roster, cached, lineups] = await Promise.all([
       minfotbollGetSafe(`/api/teamapi/initplayersadminvc?TeamID=${teamId}`, mfToken),
       supabaseGet(`/opponent_players?team_id=eq.${teamId}&select=*`).catch(() => null),
+      gameId
+        ? minfotbollGetSafe(`/api/magazinegameviewapi/initgamelineups?GameID=${gameId}`, mfToken)
+        : Promise.resolve(null),
     ]);
     // null = MinFotboll yanıt vermedi; [] = takımın yayınlanmış kadrosu yok
     if (!Array.isArray(roster)) {
@@ -2223,11 +2232,63 @@ if (action === 'clubgames') {
       };
     });
 
+    // Maç kadrosu: GameTeamRoster.Players = ilk 11, Substitutes = yedekler.
+    // IsSubstitute alanına güvenme (yedeklerde bile false gelebiliyor) — diziye bak.
+    // ShirtNumber hep 0, gerçek numara ShirtNumberString'te.
+    let match = null;
+    if (gameId) {
+      if (!lineups) {
+        match = { status: 'failed' };
+      } else {
+        const h = lineups.HomeTeamGameTeamRoster, a = lineups.AwayTeamGameTeamRoster;
+        const r = (h && h.TeamID === teamId) ? h : (a && a.TeamID === teamId) ? a
+          : side === 'home' ? h : side === 'away' ? a : null;
+        const list = [];
+        if (r) {
+          (r.Players || []).forEach(p => list.push({ p, starter: true }));
+          (r.Substitutes || []).forEach(p => list.push({ p, starter: false }));
+        }
+        if (!list.length) {
+          match = { status: 'unpublished' };
+        } else {
+          const byId = {};
+          players.forEach(p => { byId[p.playerId] = p; });
+          list.forEach(({ p, starter }) => {
+            let pl = byId[p.PlayerID];
+            if (!pl) {
+              // Truppta olmayan ama maçta oynayan (başka takımdan lånad vb.)
+              const c = cacheMap[p.PlayerID];
+              const fresh = opponentCacheIsFresh(c);
+              pl = {
+                playerId: p.PlayerID,
+                teamPlayerId: p.TeamPlayerID || (fresh ? c.team_player_id : null) || null,
+                name: p.FullName || `${p.FirstName || ''} ${p.LastName || ''}`.trim(),
+                shirt: '',
+                position: p.Position || '',
+                thumbnail: p.ThumbnailURL || '',
+                birthYear: fresh ? c.year_of_birth : null,
+                seasons: fresh ? (c.seasons || []) : null,
+                cached: fresh,
+                notInSquad: true,
+              };
+              players.push(pl);
+              byId[pl.playerId] = pl;
+            }
+            pl.inMatch = true;
+            pl.starter = starter;
+            pl.gamePlayerId = p.GamePlayerID || null;
+            if (p.ShirtNumberString) pl.matchShirt = p.ShirtNumberString;
+          });
+          match = { status: 'ok', count: list.length };
+        }
+      }
+    }
+
     players.sort((a, b) =>
-      (parseInt(a.shirt, 10) || 999) - (parseInt(b.shirt, 10) || 999) ||
+      (parseInt(a.matchShirt || a.shirt, 10) || 999) - (parseInt(b.matchShirt || b.shirt, 10) || 999) ||
       a.name.localeCompare(b.name, 'sv'));
 
-    return res.status(200).json({ teamId, players });
+    return res.status(200).json({ teamId, players, match });
    } catch(e) { return res.status(502).json({ error: 'MinFotboll svarar inte: ' + e.message }); }
   }
 
@@ -2237,6 +2298,7 @@ if (action === 'clubgames') {
     const teamId = parseInt(req.query.teamId);
     const playerId = parseInt(req.query.playerId);
     const teamPlayerId = parseInt(req.query.teamPlayerId) || 0;
+    const gamePlayerId = parseInt(req.query.gamePlayerId) || 0;
     if (!teamId || !playerId) return res.status(400).json({ error: 'teamId och playerId krävs' });
 
     if (req.query.refresh !== '1') {
@@ -2253,8 +2315,9 @@ if (action === 'clubgames') {
 
     const mfToken = await getMinfotbollToken();
     const [profile, statsTable] = await Promise.all([
-      teamPlayerId
-        ? minfotbollGetSafe(`/api/playerapi/initplayerprofile?TeamPlayerID=${teamPlayerId}&GamePlayerID=0`, mfToken)
+      // Truppta olmayan maç oyuncusunun TeamPlayerID'si yok; profil GamePlayerID ile de açılıyor
+      (teamPlayerId || gamePlayerId)
+        ? minfotbollGetSafe(`/api/playerapi/initplayerprofile?TeamPlayerID=${teamPlayerId}&GamePlayerID=${teamPlayerId ? 0 : gamePlayerId}`, mfToken)
         : Promise.resolve(null),
       minfotbollGetSafe(`/api/statisticstableapi/initplayerprofilestatistics?PlayerID=${playerId}`, mfToken),
     ]);
