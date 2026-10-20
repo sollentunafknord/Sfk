@@ -1,23 +1,28 @@
 {
   "functions": {
-    "api/admin.js": { "maxDuration": 60 }
+    "api/admin.js": {
+      "maxDuration": 60
+    }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    }
   ],
   "headers": [
     {
       "source": "/js/(.*)",
       "headers": [
-        { "key": "Content-Type", "value": "application/javascript" },
-        { "key": "Cache-Control", "value": "public, max-age=3600" }
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
       ]
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron-email",
-      "schedule": "0 7 * * 4"
     }
   ]
 }
