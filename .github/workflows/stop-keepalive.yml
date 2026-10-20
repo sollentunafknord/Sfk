@@ -1,0 +1,25 @@
+name: Keepalive'ı kapat (25 Kasım)
+
+# 2026-11-25'te keepalive + heartbeat iş akışlarını ve en son kendini kapatır.
+# Sonrasında Supabase ~7 gün içinde uykuya geçer; geri açmak için:
+#   gh workflow enable keepalive.yml -R sollentunafknord/Sfk
+on:
+  schedule:
+    # 25 Kasım 08:00 UTC (09:00 İsveç saati)
+    - cron: '0 8 25 11 *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  disable:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keepalive iş akışlarını kapat
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow disable keepalive.yml -R "$GITHUB_REPOSITORY"
+          gh workflow disable keepalive-heartbeat.yml -R "$GITHUB_REPOSITORY"
+          gh workflow disable stop-keepalive.yml -R "$GITHUB_REPOSITORY"
